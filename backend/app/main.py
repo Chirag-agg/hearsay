@@ -58,7 +58,7 @@ class AccuseBody(BaseModel):
 
 
 class DetectiveBody(BaseModel):
-    max_steps: int = Field(default=12, ge=1, le=30)
+    max_steps: int = Field(default=30, ge=1, le=40)
 
 
 @app.get("/health")

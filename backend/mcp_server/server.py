@@ -1,16 +1,30 @@
-"""hearsay-graph MCP server. Tools reach the village and case graphs only, never the
-truth graph, and never return root_id. Tools to add (see the architecture doc):
+"""hearsay-graph: the detective's tools as an MCP server (stdio).
 
-village_overview, gossip_hubs (Q4), factions (Q5), interrogate, trace_rumor (Q7),
-find_contradictions (Q6a, Q6b, Q11), uncorroborated_leads (Q8b),
-check_travel (Q10), suspects_fitting (Q13 then Q12), alibi_independence (Q13),
-score_suspects (Q14), accuse
+    python -m mcp_server.server        (from backend/)
+
+Tools reach the village and case graphs only, never the truth graph, and never return
+root_id. Every tool takes game_id; the detective agent fills it in, so an external MCP client
+(Claude Desktop, an IDE) can investigate any game by id too. See app/detective/tools.py.
 """
 
-# mcp 2.x renamed FastMCP to MCPServer; tools are still registered with @mcp.tool().
-from mcp.server.mcpserver import MCPServer
+import sys
+from pathlib import Path
 
-mcp = MCPServer("hearsay-graph")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mcp.server.mcpserver import MCPServer  # noqa: E402  (mcp 2.x renamed FastMCP to MCPServer)
+
+from app.detective.tools import TOOLS  # noqa: E402
+
+mcp = MCPServer(
+    "hearsay-graph",
+    instructions="Tools for solving the HEARSAY murder at the Old Mill. Start with gossip_hubs, interrogate "
+                 "villagers, follow heard claims with who_told_you and interrogate(about_claim_id=...), check "
+                 "find_contradictions and score_suspects, then accuse with statement ids as evidence.",
+)
+
+for fn in TOOLS:
+    mcp.tool(structured_output=True)(fn)
 
 
 if __name__ == "__main__":

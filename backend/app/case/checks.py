@@ -21,11 +21,15 @@ def _detail(kind: str, r: dict, names: dict[str, str]) -> str:
     def n(key):
         return names.get(r[key], r[key])
 
+    def who(teller):  # "Elena Marsh says she stayed", not "Elena Marsh says Elena Marsh stayed"
+        return "they themselves" if teller == n("person") else n("person")
+
     if kind == "two_places":
-        return (f"{r['says_1']} puts {n('person')} at the {n('place_1')}; "
-                f"{r['says_2']} puts them at the {n('place_2')} at the same time")
+        return (f"{r['says_1']} puts {who(r['says_1'])} at the {n('place_1')}; "
+                f"{r['says_2']} puts {who(r['says_2'])} at the {n('place_2')} at the same time")
     if kind == "stayed_but_left":
-        return f"{r['claims_stayed']} says {n('person')} stayed at the {n('place')}; {r['says_left']} saw them leave"
+        return (f"{r['claims_stayed']} says {'they' if r['claims_stayed'] == n('person') else n('person')} stayed "
+                f"at the {n('place')}; {r['says_left']} saw them leave")
     return f"{r['villager']} first said the {n('first_said')}, later the {n('later_said')}"
 
 

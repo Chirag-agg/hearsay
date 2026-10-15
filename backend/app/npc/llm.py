@@ -77,18 +77,24 @@ def prompt(me: dict, claims: list[dict], memory: list[dict], question: str, trus
 MAX_RETRY_WAIT_S = float(os.getenv("LLM_MAX_RETRY_WAIT_S", "8"))
 
 
-def _post(req: urllib.request.Request, *, retry_on_limit: bool) -> str:
-    """Send the request; on a rate limit (429) with a short Retry-After, wait once and retry.
-    Groq's free tier caps tokens per minute, so a burst of questions can hit it."""
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as resp:
-            return json.load(resp)["choices"][0]["message"]["content"]
-    except urllib.error.HTTPError as exc:
-        wait = float(exc.headers.get("retry-after") or 0) if exc.code == 429 else 0
-        if retry_on_limit and 0 < wait <= MAX_RETRY_WAIT_S:
-            time.sleep(wait)
-            return _post(req, retry_on_limit=False)
-        raise RuntimeError(f"LLM HTTP {exc.code}: {exc.read()[:200].decode(errors='replace')}") from None
+def chat(body: dict, *, retries: int = 1, max_wait_s: float = MAX_RETRY_WAIT_S, timeout_s: float = TIMEOUT_S) -> dict:
+    """POST a chat completion and return the message. On a rate limit (429) whose Retry-After is
+    short enough, wait and retry. Groq's free tier caps tokens per minute, so bursts hit it."""
+    req = urllib.request.Request(
+        f"{_base_url()}/chat/completions", data=json.dumps(body).encode(), method="POST",
+        headers={"Authorization": f"Bearer {os.environ['LLM_API_KEY']}", "Content-Type": "application/json",
+                 "User-Agent": "hearsay/0.1"})
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                return json.load(resp)["choices"][0]["message"]
+        except urllib.error.HTTPError as exc:
+            wait = float(exc.headers.get("retry-after") or 0) if exc.code == 429 else 0
+            if attempt < retries and 0 < wait <= max_wait_s:
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"LLM HTTP {exc.code}: {exc.read()[:200].decode(errors='replace')}") from None
+    raise RuntimeError("LLM retries exhausted")
 
 
 def render(me: dict, claims: list[dict], memory: list[dict], question: str, trust: float,
@@ -103,12 +109,7 @@ def render(me: dict, claims: list[dict], memory: list[dict], question: str, trus
         "temperature": 0.2 if strict else 0.6,
         "response_format": {"type": "json_object"},
     }
-    req = urllib.request.Request(
-        f"{_base_url()}/chat/completions", data=json.dumps(body).encode(), method="POST",
-        headers={"Authorization": f"Bearer {os.environ['LLM_API_KEY']}", "Content-Type": "application/json",
-                 "User-Agent": "hearsay/0.1"})
-    content = _post(req, retry_on_limit=True)
-    out = json.loads(content)
+    out = json.loads(chat(body)["content"])
     return {"dialogue": str(out.get("dialogue", "")).strip(),
             "claim_ids_used": [str(x) for x in out.get("claim_ids_used", [])],
             "emotion": str(out.get("emotion", "neutral"))}
