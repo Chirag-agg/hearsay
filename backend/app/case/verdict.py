@@ -128,7 +128,10 @@ def god_view(g: str) -> dict:
             OPTIONAL MATCH (c)-[:ABOUT]->(x)
             OPTIONAL MATCH (c)-[:AT]->(pl:Place)
             OPTIONAL MATCH (c)-[:HEARD_FROM]->(s:Person)
+            OPTIONAL MATCH (c)-[:INVOLVES]->(o:Object)
+            OPTIONAL MATCH (op:Person) WHERE op.id = c.object_id
             RETURN c.id AS id, c.pred AS pred, coalesce(x.name, x.text) AS about, pl.name AS place,
+                   coalesce(o.name, op.name) AS object, c.crowns AS crowns, c.note AS note,
                    c.t_from AS t_from, c.t_to AS t_to, c.origin AS origin, c.confidence AS confidence,
                    c.mutated AS mutated, coalesce(c.private, false) AS secret, s.id AS heard_from
             ORDER BY c.salience * c.confidence DESC, id""", label="god view")

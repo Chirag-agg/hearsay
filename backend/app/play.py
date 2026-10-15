@@ -127,8 +127,10 @@ def ask(g: str, villager_id: str, question: str, *, cite_statement_ids: list[str
     out_events = [{"type": "contradiction_found", "kind": c["kind"], "detail": c["detail"], "key": c["key"],
                    "statements": [c["stmt_1"], c["stmt_2"]]} for c in found["new"]]
     if hops:
+        # who talked to whom (for the speech bubbles), never what they said or what changed
+        pairs = sorted({(h.teller, h.listener) for h in hops})
         out_events.append({"type": "rumor_spread", "hops": len(hops), "mutated": sum(1 for h in hops if h.mutated_field),
-                           "tick": after["tick"]})
+                           "tick": after["tick"], "pairs": [list(p) for p in pairs]})
     if trust is not None:
         out_events.append({"type": "mood_changed", "villager": villager_id, "trust": trust})
     out_events.append({"type": "clock_tick", "clock": after["clock"], "questions_left": after["questions_left"]})

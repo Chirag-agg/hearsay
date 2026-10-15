@@ -36,9 +36,13 @@ def seed_if_missing() -> None:
     """A fresh FalkorDB (new Cloud instance, new Docker volume) gets its templates on first start."""
     from app import seed
 
-    if os.getenv("AUTO_SEED", "1") == "1" and not seed.templates_ready():
-        logging.getLogger("hearsay").info("tpl_* graphs missing: seeding (this takes ~1 s locally, ~45 s on Cloud)")
-        seed.seed(verbose=False)
+    log = logging.getLogger("hearsay")
+    try:
+        if os.getenv("AUTO_SEED", "1") == "1" and not seed.templates_ready():
+            log.info("tpl_* graphs missing: seeding (this takes ~1 s locally, ~45 s on Cloud)")
+            seed.seed(verbose=False)
+    except Exception as exc:  # FalkorDB not up yet: serve anyway; /health and POST /games will say so
+        log.warning("could not check or seed the templates at startup: %s", exc)
 
 
 def _call(fn, *args, **kwargs):

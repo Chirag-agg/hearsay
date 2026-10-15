@@ -141,12 +141,16 @@ export type Reveal = {
   sighting_rumor: { from: string; to: string; tick: number; changed: string | null; before: string | null; after: string | null }[];
   gossip: { hops: number; mutated: number };
   lies_caught: { kind: string; detail: string; liar: string | null }[];
+  killer_reacted?: { tick: number; villager: string; what: string }[];
 };
 
 export type GodClaim = {
   id: string;
   pred: string;
   about: string | null;
+  object?: string | null;
+  crowns?: number | null;
+  note?: string | null;
   place: string | null;
   t_from: number;
   t_to: number;
