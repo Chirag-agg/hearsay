@@ -1,0 +1,412 @@
+{
+  "id": "hollowmere",
+  "title": "Death at the Old Mill",
+  "village": "Hollowmere",
+  "notes": [
+    "Times are minutes since midnight (21:30 = 1290). The next morning continues past 1440 (06:00 = 1800).",
+    "Point events (a sighting, someone leaving) are 10-minute windows, t-5 to t+5.",
+    "Claims use the graph property names directly. root_id defaults to id; confidence defaults to 1.0, or to parent x trust(listener->teller) x 0.9 for heard claims.",
+    "Rule claims marked dormant start at confidence 0.0, so Q1 and Q2 skip them. Activate a rule only with w02_activate_rule, which sets Rule.active and raises its claims in one statement; agents check Rule.active.",
+    "The night's rumor is scripted by the engine's own rules (one detail per hop, changed by the teller): Pip -> Hale (woman to man), Hale -> Brann (21:30 to 22:00), Brann -> Bess (Riverside path to the Mill). Ticks -2..0 are the night, before the 12 pre-game ticks.",
+    "The 8th place is the Riverside path: the doc's 20-minute Chapel-to-Mill route is split 10 + 10 so Pip's sighting has a place, and 'near the Mill' is a neighbour of it."
+  ],
+
+  "case_file": {
+    "victim": "silas",
+    "scene": "mill",
+    "weapon": "hammer",
+    "weapon_place": "smithy",
+    "death_t": 1290,
+    "tod_from": 1260,
+    "tod_to": 1320,
+    "body_found_t": 1800,
+    "sighting": "d_woman_lantern",
+    "briefing": "Silas Crane, the moneylender, is found dead at the Old Mill at 06:00. The physician puts the time of death between 21:00 and 22:00. The blacksmith's hammer is missing."
+  },
+
+  "clock": {
+    "day_start": 1920,
+    "day_end": 2400,
+    "minutes_per_question": 30,
+    "pregame_ticks": 12
+  },
+
+  "places": [
+    {"id": "square", "name": "Village Square"},
+    {"id": "tavern", "name": "Tavern"},
+    {"id": "smithy", "name": "Smithy"},
+    {"id": "herbalist", "name": "Herbalist shop"},
+    {"id": "chapel", "name": "Chapel"},
+    {"id": "manor", "name": "Manor"},
+    {"id": "mill", "name": "Old Mill"},
+    {"id": "riverside", "name": "Riverside path"}
+  ],
+
+  "roads": [
+    {"a": "square", "b": "tavern", "minutes": 5},
+    {"a": "square", "b": "smithy", "minutes": 5},
+    {"a": "square", "b": "herbalist", "minutes": 5},
+    {"a": "square", "b": "chapel", "minutes": 10},
+    {"a": "herbalist", "b": "chapel", "minutes": 10},
+    {"a": "square", "b": "manor", "minutes": 15},
+    {"a": "manor", "b": "mill", "minutes": 15},
+    {"a": "chapel", "b": "riverside", "minutes": 10},
+    {"a": "riverside", "b": "mill", "minutes": 10},
+    {"a": "tavern", "b": "mill", "minutes": 25},
+    {"a": "smithy", "b": "mill", "minutes": 30}
+  ],
+
+  "objects": [
+    {"id": "hammer", "name": "the blacksmith's hammer"},
+    {"id": "bundle", "name": "a cloth bundle"},
+    {"id": "lantern", "name": "a lantern"},
+    {"id": "mill_key", "name": "the spare key to the Mill"}
+  ],
+
+  "descriptions": [
+    {"id": "d_woman_lantern", "text": "a woman with a lantern", "sex": "f", "adult": true, "carrying": "lantern"},
+    {"id": "d_man_lantern", "text": "a man with a lantern", "sex": "m", "adult": true, "carrying": "lantern"}
+  ],
+
+  "victim": {
+    "id": "silas", "name": "Silas Crane", "role": "Moneylender", "sex": "m", "adult": true, "build": "stout",
+    "lives_at": "square"
+  },
+
+  "villagers": [
+    {
+      "id": "elena", "name": "Elena Marsh", "role": "Herbalist", "sex": "f", "adult": true, "build": "slight",
+      "accuracy": 0.9, "honesty": 0.2, "talkativeness": 0.5, "mutation_bias": ["t", "place", "subject"],
+      "lives_at": "herbalist", "works_at": "herbalist",
+      "player_trust": 0.5, "player_warmth": 0.4,
+      "persona": "Elena Marsh, the village herbalist. Soft-spoken, helpful, quick to offer a remedy; deflects with concern for others.",
+      "secret": "The killer. Says she was at the Chapel until 22:00. Owes Silas 300 crowns.",
+      "claims": [
+        {"id": "c_elena_took_hammer", "pred": "CARRIED", "subject_id": "elena", "object_id": "hammer", "place_id": "smithy",
+         "t_from": 1045, "t_to": 1055, "origin": "witnessed", "salience": 0.9, "private": true},
+        {"id": "c_elena_threatened", "pred": "THREATENED", "subject_id": "silas", "object_id": "elena", "place_id": "square",
+         "t_from": 1075, "t_to": 1085, "origin": "witnessed", "salience": 0.9, "private": true},
+        {"id": "c_elena_owes", "pred": "OWES", "subject_id": "elena", "object_id": "silas", "place_id": "square", "crowns": 300,
+         "t_from": 1075, "t_to": 1085, "origin": "witnessed", "salience": 0.9, "private": true},
+        {"id": "c_elena_at_chapel", "pred": "WAS_AT", "subject_id": "elena", "place_id": "chapel",
+         "t_from": 1140, "t_to": 1260, "origin": "witnessed", "salience": 0.6, "private": true},
+        {"id": "c_elena_left_chapel", "pred": "LEFT", "subject_id": "elena", "place_id": "chapel", "toward_id": "mill",
+         "t_from": 1255, "t_to": 1265, "origin": "witnessed", "salience": 0.9, "private": true},
+        {"id": "c_elena_at_mill", "pred": "WAS_AT", "subject_id": "elena", "place_id": "mill",
+         "t_from": 1285, "t_to": 1295, "origin": "witnessed", "salience": 1.0, "private": true},
+        {"id": "c_elena_hammer_mill", "pred": "CARRIED", "subject_id": "elena", "object_id": "hammer", "place_id": "mill",
+         "t_from": 1285, "t_to": 1295, "origin": "witnessed", "salience": 1.0, "private": true},
+        {"id": "c_elena_at_shop", "pred": "WAS_AT", "subject_id": "elena", "place_id": "herbalist",
+         "t_from": 1320, "t_to": 1440, "origin": "witnessed", "salience": 0.6, "private": true},
+        {"id": "c_elena_lie_chapel", "pred": "WAS_AT", "subject_id": "elena", "place_id": "chapel",
+         "t_from": 1140, "t_to": 1320, "origin": "lie", "salience": 0.5},
+        {"id": "c_elena_lie_jonas_mill", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "mill", "object_id": "hammer",
+         "t_from": 1240, "t_to": 1250, "origin": "lie", "salience": 0.9, "confidence": 0.0, "dormant": true},
+        {"id": "c_elena_lie_home", "pred": "WAS_AT", "subject_id": "elena", "place_id": "herbalist",
+         "t_from": 1270, "t_to": 1320, "origin": "lie", "salience": 0.5, "confidence": 0.0, "dormant": true}
+      ],
+      "rules": [
+        {"id": "rule_elena_cover", "trigger": "asked_whereabouts", "subject_id": "elena", "t_from": 1260, "t_to": 1320,
+         "action": "replace", "active": true, "uses": ["c_elena_lie_chapel"],
+         "hides": ["c_elena_at_chapel", "c_elena_left_chapel", "c_elena_at_mill", "c_elena_hammer_mill", "c_elena_at_shop"]},
+        {"id": "rule_elena_frame_jonas", "trigger": "heard_detective_asked", "topic": "hammer",
+         "action": "plant", "active": false, "stretch": true, "uses": ["c_elena_lie_jonas_mill"]},
+        {"id": "rule_elena_change_story", "trigger": "heard_detective_asked", "topic": "chapel_departure", "asked_of": "aldric",
+         "subject_id": "elena", "t_from": 1260, "t_to": 1320,
+         "action": "replace", "active": false, "stretch": true, "supersedes": "rule_elena_cover",
+         "uses": ["c_elena_lie_home"],
+         "hides": ["c_elena_at_chapel", "c_elena_left_chapel", "c_elena_at_mill", "c_elena_hammer_mill", "c_elena_at_shop",
+                   "c_elena_lie_chapel"]}
+      ]
+    },
+    {
+      "id": "jonas", "name": "Jonas Reed", "role": "Blacksmith", "sex": "m", "adult": true, "build": "broad",
+      "accuracy": 0.9, "honesty": 0.4, "talkativeness": 0.5, "mutation_bias": ["t", "place"],
+      "lives_at": "smithy", "works_at": "smithy",
+      "player_trust": 0.4, "player_warmth": 0.3,
+      "persona": "Jonas Reed, the blacksmith. Big, blunt and short-tempered; gets defensive when pressed about his evening.",
+      "secret": "Says he was home at the Smithy 21:00-23:00; really at the Manor with Lady Wren.",
+      "claims": [
+        {"id": "c_jonas_at_smithy", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "smithy",
+         "t_from": 1020, "t_to": 1165, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_jonas_at_tavern", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "tavern",
+         "t_from": 1170, "t_to": 1260, "origin": "witnessed", "salience": 0.4},
+        {"id": "c_jonas_argued", "pred": "ARGUED_WITH", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern",
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.6, "private": true},
+        {"id": "c_jonas_owes", "pred": "OWES", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern", "crowns": 40,
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.6, "private": true},
+        {"id": "c_jonas_left_tavern", "pred": "LEFT", "subject_id": "jonas", "place_id": "tavern", "toward_id": "manor",
+         "t_from": 1255, "t_to": 1265, "origin": "witnessed", "salience": 0.7, "private": true},
+        {"id": "c_jonas_at_manor", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "manor",
+         "t_from": 1260, "t_to": 1350, "origin": "witnessed", "salience": 0.8, "private": true},
+        {"id": "c_jonas_wren_manor", "pred": "WAS_AT", "subject_id": "wren", "place_id": "manor",
+         "t_from": 1260, "t_to": 1350, "origin": "witnessed", "salience": 0.8, "private": true},
+        {"id": "c_jonas_lie_smithy", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "smithy",
+         "t_from": 1260, "t_to": 1380, "origin": "lie", "salience": 0.5}
+      ],
+      "rules": [
+        {"id": "rule_jonas_cover", "trigger": "asked_whereabouts", "subject_id": "jonas", "t_from": 1260, "t_to": 1350,
+         "action": "replace", "active": true, "uses": ["c_jonas_lie_smithy"],
+         "hides": ["c_jonas_left_tavern", "c_jonas_at_manor", "c_jonas_wren_manor"]}
+      ]
+    },
+    {
+      "id": "wren", "name": "Lady Wren", "role": "Lady of the Manor", "sex": "f", "adult": true, "build": "tall",
+      "accuracy": 0.9, "honesty": 0.6, "talkativeness": 0.3, "mutation_bias": ["t"],
+      "lives_at": "manor",
+      "player_trust": 0.3, "player_warmth": 0.2,
+      "persona": "Lady Wren of the Manor. Cool, proper and guarded; treats questions as impertinence until she trusts you.",
+      "secret": "Says she was alone. Jonas was with her 21:00-22:30; she confirms it only at trust 0.6 or when shown Bess's 'left toward the Manor'.",
+      "claims": [
+        {"id": "c_wren_at_manor", "pred": "WAS_AT", "subject_id": "wren", "place_id": "manor",
+         "t_from": 1080, "t_to": 1440, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_wren_jonas_manor", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "manor",
+         "t_from": 1260, "t_to": 1350, "origin": "witnessed", "salience": 0.8, "private": true},
+        {"id": "c_wren_jonas_left_manor", "pred": "LEFT", "subject_id": "jonas", "place_id": "manor",
+         "t_from": 1345, "t_to": 1355, "origin": "witnessed", "salience": 0.6, "private": true}
+      ],
+      "gates": [
+        {"id": "gate_wren_affair", "guards": ["c_wren_jonas_manor", "c_wren_jonas_left_manor"],
+         "min_trust": 0.6, "cite_pred": "LEFT", "cite_subject_id": "jonas", "cite_toward_id": "manor",
+         "refusal": "I was alone at the Manor all evening."}
+      ]
+    },
+    {
+      "id": "bess", "name": "Bess Tolley", "role": "Barkeep", "sex": "f", "adult": true, "build": "stout",
+      "accuracy": 0.7, "honesty": 0.9, "talkativeness": 0.9, "mutation_bias": ["subject", "subject", "t"],
+      "lives_at": "tavern", "works_at": "tavern",
+      "player_trust": 0.6, "player_warmth": 0.7,
+      "persona": "Bess Tolley, barkeep of the Tavern. Warm, loud, hears everything and repeats most of it with relish.",
+      "claims": [
+        {"id": "c_bess_at_tavern", "pred": "WAS_AT", "subject_id": "bess", "place_id": "tavern",
+         "t_from": 1080, "t_to": 1440, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_bess_silas_tavern", "pred": "WAS_AT", "subject_id": "silas", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1230, "origin": "witnessed", "salience": 0.7},
+        {"id": "c_bess_silas_left", "pred": "LEFT", "subject_id": "silas", "place_id": "tavern",
+         "t_from": 1225, "t_to": 1235, "origin": "witnessed", "salience": 0.7},
+        {"id": "c_bess_jonas_tavern", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "tavern",
+         "t_from": 1170, "t_to": 1260, "origin": "witnessed", "salience": 0.6},
+        {"id": "c_bess_hale_tavern", "pred": "WAS_AT", "subject_id": "hale", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1380, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_bess_imogen_tavern", "pred": "WAS_AT", "subject_id": "imogen", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1320, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_bess_jonas_argued", "pred": "ARGUED_WITH", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern",
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.8},
+        {"id": "c_bess_jonas_owes", "pred": "OWES", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern", "crowns": 40,
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.7},
+        {"id": "c_bess_jonas_left", "pred": "LEFT", "subject_id": "jonas", "place_id": "tavern", "toward_id": "manor",
+         "t_from": 1255, "t_to": 1265, "origin": "witnessed", "salience": 0.6},
+        {"id": "c_bess_heard_sighting", "pred": "WAS_AT", "subject_id": "d_man_lantern", "place_id": "mill",
+         "t_from": 1315, "t_to": 1325, "origin": "heard", "salience": 0.9, "mutated": "place",
+         "root_id": "c_pip_saw_woman", "parent_id": "c_brann_heard_sighting", "heard_from": "brann", "tick": 0}
+      ]
+    },
+    {
+      "id": "pip", "name": "Pip Harlow", "role": "Village drunk", "sex": "m", "adult": true, "build": "thin",
+      "accuracy": 0.4, "honesty": 0.8, "talkativeness": 0.8, "mutation_bias": ["place", "place", "subject"],
+      "player_trust": 0.6, "player_warmth": 0.6,
+      "persona": "Pip Harlow, the village drunk. Rambling, cheerful, mixes up details but means well.",
+      "claims": [
+        {"id": "c_pip_at_riverside", "pred": "WAS_AT", "subject_id": "pip", "place_id": "riverside",
+         "t_from": 1280, "t_to": 1300, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_pip_saw_woman", "pred": "WAS_AT", "subject_id": "d_woman_lantern", "place_id": "riverside",
+         "t_from": 1285, "t_to": 1295, "origin": "witnessed", "salience": 0.9}
+      ]
+    },
+    {
+      "id": "aldric", "name": "Father Aldric", "role": "Priest", "sex": "m", "adult": true, "build": "medium",
+      "accuracy": 0.97, "honesty": 1.0, "talkativeness": 0.3, "mutation_bias": ["t"],
+      "lives_at": "chapel", "works_at": "chapel",
+      "player_trust": 0.7, "player_warmth": 0.5,
+      "persona": "Father Aldric, the village priest. Calm, precise, never gossips for fun.",
+      "claims": [
+        {"id": "c_aldric_at_chapel", "pred": "WAS_AT", "subject_id": "aldric", "place_id": "chapel",
+         "t_from": 1080, "t_to": 1380, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_aldric_elena_chapel", "pred": "WAS_AT", "subject_id": "elena", "place_id": "chapel",
+         "t_from": 1140, "t_to": 1260, "origin": "witnessed", "salience": 0.5},
+        {"id": "c_aldric_elena_left", "pred": "LEFT", "subject_id": "elena", "place_id": "chapel",
+         "t_from": 1255, "t_to": 1265, "origin": "witnessed", "salience": 0.6}
+      ]
+    },
+    {
+      "id": "tilly", "name": "Tilly", "role": "Child", "sex": "f", "adult": false, "build": "small",
+      "accuracy": 0.9, "honesty": 1.0, "talkativeness": 0.6, "mutation_bias": ["t", "place"],
+      "lives_at": "square",
+      "player_trust": 0.6, "player_warmth": 0.6,
+      "persona": "Tilly, ten years old. Sharp-eyed, earnest, used to grown-ups not listening to her.",
+      "claims": [
+        {"id": "c_tilly_jonas_smithy", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "smithy",
+         "t_from": 1045, "t_to": 1055, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_tilly_elena_left_smithy", "pred": "LEFT", "subject_id": "elena", "place_id": "smithy",
+         "t_from": 1045, "t_to": 1055, "origin": "witnessed", "salience": 0.5},
+        {"id": "c_tilly_elena_bundle", "pred": "CARRIED", "subject_id": "elena", "object_id": "bundle", "place_id": "smithy",
+         "t_from": 1045, "t_to": 1055, "origin": "witnessed", "salience": 0.6},
+        {"id": "c_tilly_silas_threat", "pred": "THREATENED", "subject_id": "silas", "object_id": "elena", "place_id": "square",
+         "t_from": 1075, "t_to": 1085, "origin": "witnessed", "salience": 0.8},
+        {"id": "c_tilly_elena_owes", "pred": "OWES", "subject_id": "elena", "object_id": "silas", "place_id": "square", "crowns": 300,
+         "t_from": 1075, "t_to": 1085, "origin": "witnessed", "salience": 0.7}
+      ]
+    },
+    {
+      "id": "hale", "name": "Constable Hale", "role": "Constable", "sex": "m", "adult": true, "build": "stout",
+      "accuracy": 0.5, "honesty": 0.9, "talkativeness": 0.7, "mutation_bias": ["t", "t", "place"],
+      "works_at": "square",
+      "player_trust": 0.5, "player_warmth": 0.4,
+      "persona": "Constable Hale. Self-important, eager to help, hopeless with times.",
+      "claims": [
+        {"id": "c_hale_at_tavern", "pred": "WAS_AT", "subject_id": "hale", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1380, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_hale_jonas_tavern", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "tavern",
+         "t_from": 1170, "t_to": 1260, "origin": "witnessed", "salience": 0.5},
+        {"id": "c_hale_bess_tavern", "pred": "WAS_AT", "subject_id": "bess", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1380, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_hale_imogen_tavern", "pred": "WAS_AT", "subject_id": "imogen", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1320, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_hale_jonas_argued", "pred": "ARGUED_WITH", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern",
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.7},
+        {"id": "c_hale_jonas_owes", "pred": "OWES", "subject_id": "jonas", "object_id": "silas", "place_id": "tavern", "crowns": 40,
+         "t_from": 1195, "t_to": 1205, "origin": "witnessed", "salience": 0.6},
+        {"id": "c_hale_heard_sighting", "pred": "WAS_AT", "subject_id": "d_man_lantern", "place_id": "riverside",
+         "t_from": 1285, "t_to": 1295, "origin": "heard", "salience": 0.9, "mutated": "subject",
+         "root_id": "c_pip_saw_woman", "parent_id": "c_pip_saw_woman", "heard_from": "pip", "tick": -2}
+      ]
+    },
+    {
+      "id": "brann", "name": "Brann Holt", "role": "Miller", "sex": "m", "adult": true, "build": "broad",
+      "accuracy": 0.7, "honesty": 0.7, "talkativeness": 0.5, "mutation_bias": ["t", "place", "subject"],
+      "works_at": "mill",
+      "player_trust": 0.5, "player_warmth": 0.4,
+      "persona": "Brann Holt, the miller. Gruff, nervous about money, keeps to himself.",
+      "secret": "Owes Silas 120 crowns (a second motive).",
+      "claims": [
+        {"id": "c_brann_owes", "pred": "OWES", "subject_id": "brann", "object_id": "silas", "place_id": "square", "crowns": 120,
+         "t_from": 595, "t_to": 605, "origin": "witnessed", "salience": 0.5, "private": true},
+        {"id": "c_brann_silas_key", "pred": "CARRIED", "subject_id": "silas", "object_id": "mill_key",
+         "t_from": 0, "t_to": 1440, "origin": "witnessed", "salience": 0.6,
+         "note": "The Mill is usually locked; Silas had a spare key."},
+        {"id": "c_brann_at_mill", "pred": "WAS_AT", "subject_id": "brann", "place_id": "mill",
+         "t_from": 1795, "t_to": 1805, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_brann_found_body", "pred": "WAS_AT", "subject_id": "silas", "place_id": "mill",
+         "t_from": 1795, "t_to": 1805, "origin": "witnessed", "salience": 0.9, "note": "found dead"},
+        {"id": "c_brann_heard_sighting", "pred": "WAS_AT", "subject_id": "d_man_lantern", "place_id": "riverside",
+         "t_from": 1315, "t_to": 1325, "origin": "heard", "salience": 0.9, "mutated": "t",
+         "root_id": "c_pip_saw_woman", "parent_id": "c_hale_heard_sighting", "heard_from": "hale", "tick": -1}
+      ]
+    },
+    {
+      "id": "imogen", "name": "Dr. Imogen Cole", "role": "Physician", "sex": "f", "adult": true, "build": "slight",
+      "accuracy": 0.9, "honesty": 1.0, "talkativeness": 0.5, "mutation_bias": ["t", "place"],
+      "works_at": "square",
+      "player_trust": 0.6, "player_warmth": 0.5,
+      "persona": "Dr. Imogen Cole, the physician. Dry, exact, unimpressed by gossip.",
+      "claims": [
+        {"id": "c_imogen_at_tavern", "pred": "WAS_AT", "subject_id": "imogen", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1320, "origin": "witnessed", "salience": 0.2},
+        {"id": "c_imogen_jonas_tavern", "pred": "WAS_AT", "subject_id": "jonas", "place_id": "tavern",
+         "t_from": 1170, "t_to": 1260, "origin": "witnessed", "salience": 0.5},
+        {"id": "c_imogen_bess_tavern", "pred": "WAS_AT", "subject_id": "bess", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1320, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_imogen_hale_tavern", "pred": "WAS_AT", "subject_id": "hale", "place_id": "tavern",
+         "t_from": 1140, "t_to": 1320, "origin": "witnessed", "salience": 0.3},
+        {"id": "c_imogen_time_of_death", "pred": "WAS_AT", "subject_id": "silas", "place_id": "mill",
+         "t_from": 1260, "t_to": 1320, "origin": "witnessed", "salience": 0.8, "note": "time of death, from examining the body"}
+      ]
+    }
+  ],
+
+  "knows": [
+    {"a": "bess", "b": "hale", "closeness": 0.8},
+    {"a": "bess", "b": "jonas", "closeness": 0.7},
+    {"a": "bess", "b": "elena", "closeness": 0.6},
+    {"a": "bess", "b": "pip", "closeness": 0.6},
+    {"a": "bess", "b": "brann", "closeness": 0.8},
+    {"a": "bess", "b": "imogen", "closeness": 0.6},
+    {"a": "bess", "b": "aldric", "closeness": 0.4},
+    {"a": "bess", "b": "tilly", "closeness": 0.4},
+    {"a": "hale", "b": "pip", "closeness": 0.5},
+    {"a": "hale", "b": "imogen", "closeness": 0.5},
+    {"a": "hale", "b": "aldric", "closeness": 0.4},
+    {"a": "hale", "b": "brann", "closeness": 0.8},
+    {"a": "elena", "b": "aldric", "closeness": 0.5},
+    {"a": "elena", "b": "imogen", "closeness": 0.5},
+    {"a": "elena", "b": "tilly", "closeness": 0.4},
+    {"a": "jonas", "b": "wren", "closeness": 0.8},
+    {"a": "jonas", "b": "brann", "closeness": 0.5},
+    {"a": "jonas", "b": "tilly", "closeness": 0.3},
+    {"a": "aldric", "b": "wren", "closeness": 0.5},
+    {"a": "aldric", "b": "tilly", "closeness": 0.5},
+    {"a": "imogen", "b": "wren", "closeness": 0.4},
+    {"a": "brann", "b": "pip", "closeness": 0.3}
+  ],
+
+  "trust": {
+    "base": 0.4,
+    "per_closeness": 0.5,
+    "toward": {"tilly": 0.3, "pip": 0.6},
+    "note": "TRUSTS score from a villager to each person they KNOW = base + per_closeness x closeness, unless 'toward' overrides it (adults trust Tilly little, nobody quite trusts Pip). warmth = closeness."
+  },
+
+  "facts": [
+    {"id": "f_body", "text": "Silas Crane found dead at the Old Mill, 06:00."},
+    {"id": "f_time_of_death", "text": "The physician puts the time of death between 21:00 and 22:00."},
+    {"id": "f_hammer_missing", "text": "The blacksmith's hammer is missing."}
+  ],
+
+  "truth": {
+    "killer": "elena",
+    "victim": "silas",
+    "was_at": [
+      {"person": "elena", "place": "smithy", "from_t": 1045, "to_t": 1055},
+      {"person": "elena", "place": "square", "from_t": 1075, "to_t": 1085},
+      {"person": "elena", "place": "chapel", "from_t": 1140, "to_t": 1260},
+      {"person": "elena", "place": "riverside", "from_t": 1270, "to_t": 1288},
+      {"person": "elena", "place": "mill", "from_t": 1288, "to_t": 1298},
+      {"person": "elena", "place": "herbalist", "from_t": 1328, "to_t": 1440},
+      {"person": "jonas", "place": "smithy", "from_t": 1020, "to_t": 1165},
+      {"person": "jonas", "place": "tavern", "from_t": 1170, "to_t": 1260},
+      {"person": "jonas", "place": "manor", "from_t": 1275, "to_t": 1350},
+      {"person": "jonas", "place": "smithy", "from_t": 1370, "to_t": 1440},
+      {"person": "wren", "place": "manor", "from_t": 1080, "to_t": 1440},
+      {"person": "bess", "place": "tavern", "from_t": 1080, "to_t": 1440},
+      {"person": "hale", "place": "tavern", "from_t": 1140, "to_t": 1380},
+      {"person": "imogen", "place": "tavern", "from_t": 1140, "to_t": 1320},
+      {"person": "aldric", "place": "chapel", "from_t": 1080, "to_t": 1380},
+      {"person": "tilly", "place": "smithy", "from_t": 1040, "to_t": 1060},
+      {"person": "tilly", "place": "square", "from_t": 1060, "to_t": 1140},
+      {"person": "pip", "place": "riverside", "from_t": 1280, "to_t": 1300},
+      {"person": "silas", "place": "square", "from_t": 1075, "to_t": 1085},
+      {"person": "silas", "place": "tavern", "from_t": 1140, "to_t": 1230},
+      {"person": "silas", "place": "mill", "from_t": 1255, "to_t": 1290},
+      {"person": "brann", "place": "mill", "from_t": 1795, "to_t": 1805}
+    ],
+    "owes": [
+      {"from": "elena", "to": "silas", "crowns": 300},
+      {"from": "jonas", "to": "silas", "crowns": 40},
+      {"from": "brann", "to": "silas", "crowns": 120}
+    ],
+    "threatened": [{"from": "silas", "to": "elena", "t": 1080}],
+    "argued_with": [{"from": "jonas", "to": "silas", "t": 1200}],
+    "took": [{"person": "elena", "object": "hammer", "t": 1050}],
+    "killed": [{"from": "elena", "to": "silas", "t": 1290, "weapon": "hammer", "place": "mill"}],
+    "hid": [{"person": "elena", "object": "hammer", "t": 1330, "place": "herbalist", "where": "under the floorboards"}],
+    "events": [
+      {"t": 1050, "text": "Elena collects repaired tools from the Smithy and takes the hammer while Jonas is out back. Tilly sees her carry a bundle."},
+      {"t": 1080, "text": "Silas tells Elena to pay by Friday or lose her shop. Tilly overhears."},
+      {"t": 1140, "text": "Silas drinks at the Tavern until 20:30."},
+      {"t": 1200, "text": "Jonas argues loudly with Silas about a 40-crown debt."},
+      {"t": 1230, "text": "Silas leaves for the Mill, where Elena has offered to 'settle up'."},
+      {"t": 1260, "text": "Elena leaves the Chapel. Jonas leaves the Tavern for the Manor."},
+      {"t": 1290, "text": "Elena kills Silas at the Mill. Pip, walking home, sees a woman with a lantern on the Riverside path."},
+      {"t": 1320, "text": "Elena is back at her shop. She later hides the hammer under her floorboards."},
+      {"t": 1800, "text": "Brann finds the body."}
+    ],
+    "gossiped": [
+      {"from": "pip", "to": "hale", "tick": -2, "root_id": "c_pip_saw_woman", "claim_id": "c_hale_heard_sighting",
+       "mutated_field": "subject", "before": "a woman with a lantern", "after": "a man with a lantern"},
+      {"from": "hale", "to": "brann", "tick": -1, "root_id": "c_pip_saw_woman", "claim_id": "c_brann_heard_sighting",
+       "mutated_field": "t", "before": "21:30", "after": "22:00"},
+      {"from": "brann", "to": "bess", "tick": 0, "root_id": "c_pip_saw_woman", "claim_id": "c_bess_heard_sighting",
+       "mutated_field": "place", "before": "Riverside path", "after": "Old Mill"}
+    ]
+  }
+}

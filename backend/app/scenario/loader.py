@@ -1,0 +1,216 @@
+"""Build the tpl_* template graphs from a scenario dict (see hollowmere.json).
+
+tpl_world    hidden truth: movements, debts, the killing, timeline events, seeded gossip hops
+tpl_village  public: people, places, ROAD both ways, KNOWS both ways, homes and workplaces, facts
+tpl_case     empty case board, seeded with public Person, Place and ROAD so travel checks run there
+tpl_npc_<id> one villager's memory: Self, everyone they can name, places, objects, their claims,
+             TRUSTS toward the people they know, and the liars' Rule / Lady Wren's Gate nodes
+
+New games copy these with GRAPH.COPY (app.db.new_game), which keeps the indexes.
+"""
+
+from falkordb import FalkorDB, Graph
+
+from app import db as dbmod
+from app import queries
+
+PUBLIC_FIELDS = ("id", "name", "role", "sex", "adult", "build")
+ENGINE_FIELDS = ("accuracy", "honesty", "talkativeness", "mutation_bias")
+CLAIM_FIELDS = ("id", "root_id", "parent_id", "pred", "subject_id", "place_id", "object_id", "toward_id",
+                "t_from", "t_to", "confidence", "origin", "salience", "mutated", "private",
+                "crowns", "note", "dormant")
+RULE_FIELDS = ("id", "trigger", "action", "active", "subject_id", "t_from", "t_to", "topic", "asked_of",
+               "hides", "supersedes", "stretch")
+
+
+def _pick(d: dict, fields) -> dict:
+    """Keep the listed fields that are set; FalkorDB has no null properties."""
+    return {k: d[k] for k in fields if d.get(k) is not None}
+
+
+def _nodes(g: Graph, label: str, rows: list[dict]) -> None:
+    if rows:
+        g.query(f"UNWIND $rows AS r CREATE (n:{label}) SET n = r", {"rows": rows})
+
+
+def _edges(g: Graph, rel: str, src: str, dst: str, rows: list[tuple[str, str, dict]]) -> None:
+    """Create (src {id: a})-[:rel props]->(dst {id: b}) per row; every endpoint must exist."""
+    if not rows:
+        return
+    params = {"rows": [{"a": a, "b": b, "p": p} for a, b, p in rows]}
+    result = g.query(
+        f"UNWIND $rows AS r MATCH (a:{src} {{id: r.a}}), (b:{dst} {{id: r.b}}) "
+        f"CREATE (a)-[e:{rel}]->(b) SET e = r.p",
+        params,
+    )
+    if result.relationships_created != len(rows):
+        raise RuntimeError(f"{rel} {src}->{dst}: created {result.relationships_created} of {len(rows)} edges")
+
+
+def _indexes(g: Graph) -> None:
+    for stmt in queries.load_statements("indexes"):
+        g.query(stmt)
+
+
+class Scenario:
+    """Derived lookups over the raw JSON."""
+
+    def __init__(self, s: dict):
+        self.s = s
+        self.people = [s["victim"], *s["villagers"]]
+        self.villagers = {v["id"]: v for v in s["villagers"]}
+        self.claims = {c["id"]: c for v in s["villagers"] for c in v["claims"]}
+        self.closeness = {}
+        for k in s["knows"]:
+            self.closeness[(k["a"], k["b"])] = self.closeness[(k["b"], k["a"])] = k["closeness"]
+
+    def public_people(self) -> list[dict]:
+        return [_pick(p, PUBLIC_FIELDS) for p in self.people]
+
+    def places(self) -> list[dict]:
+        return [_pick(p, ("id", "name")) for p in self.s["places"]]
+
+    def roads(self) -> list[tuple[str, str, dict]]:
+        out = []
+        for r in self.s["roads"]:
+            out.append((r["a"], r["b"], {"minutes": r["minutes"]}))
+            out.append((r["b"], r["a"], {"minutes": r["minutes"]}))
+        return out
+
+    def trust(self, a: str, b: str) -> float:
+        t = self.s["trust"]
+        if b in t["toward"]:
+            return t["toward"][b]
+        return round(t["base"] + t["per_closeness"] * self.closeness.get((a, b), 0.0), 2)
+
+    def confidence(self, owner: str, c: dict) -> float:
+        if "confidence" in c:
+            return c["confidence"]
+        if c["origin"] != "heard":
+            return 1.0
+        parent = self.claims[c["parent_id"]]
+        teller = c["heard_from"]
+        parent_owner = next(v for v in self.villagers.values() if parent in v["claims"])
+        return round(self.confidence(parent_owner["id"], parent) * self.trust(owner, teller) * 0.9, 3)
+
+
+def build_village(g: Graph, sc: Scenario) -> None:
+    s = sc.s
+    _nodes(g, "Person", sc.public_people())
+    _nodes(g, "Place", sc.places())
+    _nodes(g, "Fact", [_pick(f, ("id", "text")) for f in s["facts"]])
+    _edges(g, "ROAD", "Place", "Place", sc.roads())
+    knows = []
+    for k in s["knows"]:
+        knows.append((k["a"], k["b"], {"closeness": k["closeness"]}))
+        knows.append((k["b"], k["a"], {"closeness": k["closeness"]}))
+    _edges(g, "KNOWS", "Person", "Person", knows)
+    _edges(g, "LIVES_AT", "Person", "Place", [(p["id"], p["lives_at"], {}) for p in sc.people if p.get("lives_at")])
+    _edges(g, "WORKS_AT", "Person", "Place", [(p["id"], p["works_at"], {}) for p in sc.people if p.get("works_at")])
+
+
+def build_case(g: Graph, sc: Scenario) -> None:
+    _nodes(g, "Person", sc.public_people())
+    _nodes(g, "Place", sc.places())
+    _edges(g, "ROAD", "Place", "Place", sc.roads())
+
+
+def build_world(g: Graph, sc: Scenario) -> None:
+    s, truth = sc.s, sc.s["truth"]
+    people = []
+    for p in sc.people:
+        row = _pick(p, PUBLIC_FIELDS + ENGINE_FIELDS)
+        row["is_victim"] = p["id"] == truth["victim"]
+        row["is_killer"] = p["id"] == truth["killer"]
+        people.append(row)
+    _nodes(g, "Person", people)
+    _nodes(g, "Place", sc.places())
+    _edges(g, "ROAD", "Place", "Place", sc.roads())
+    _nodes(g, "Object", [_pick(o, ("id", "name")) for o in s["objects"]])
+    _nodes(g, "Event", [{"id": f"e_{i:02d}", **e} for i, e in enumerate(truth["events"], 1)])
+    _edges(g, "WAS_AT", "Person", "Place",
+           [(w["person"], w["place"], {"from_t": w["from_t"], "to_t": w["to_t"]}) for w in truth["was_at"]])
+    _edges(g, "OWES", "Person", "Person", [(o["from"], o["to"], {"crowns": o["crowns"]}) for o in truth["owes"]])
+    _edges(g, "THREATENED", "Person", "Person", [(t["from"], t["to"], {"t": t["t"]}) for t in truth["threatened"]])
+    _edges(g, "ARGUED_WITH", "Person", "Person", [(a["from"], a["to"], {"t": a["t"]}) for a in truth["argued_with"]])
+    _edges(g, "TOOK", "Person", "Object", [(t["person"], t["object"], {"t": t["t"]}) for t in truth["took"]])
+    _edges(g, "KILLED", "Person", "Person",
+           [(k["from"], k["to"], _pick(k, ("t", "weapon", "place"))) for k in truth["killed"]])
+    _edges(g, "HID", "Person", "Object",
+           [(h["person"], h["object"], _pick(h, ("t", "place", "where"))) for h in truth["hid"]])
+    _edges(g, "GOSSIPED", "Person", "Person",
+           [(x["from"], x["to"], _pick(x, ("tick", "root_id", "claim_id", "mutated_field", "before", "after")))
+            for x in truth["gossiped"]])
+
+
+def build_npc(g: Graph, sc: Scenario, v: dict) -> None:
+    s = sc.s
+    me = v["id"]
+    self_row = _pick(v, ("id", "name", "role", "persona", "player_trust", "player_warmth") + ENGINE_FIELDS)
+    _nodes(g, "Self", [self_row])
+    _nodes(g, "Person", [_pick(p, ("id", "name")) for p in sc.people])
+    _nodes(g, "Place", sc.places())
+    _nodes(g, "Object", [_pick(o, ("id", "name")) for o in s["objects"]])
+    _nodes(g, "Description", [_pick(d, ("id", "text", "sex", "adult", "build", "carrying"))
+                              for d in s["descriptions"]])
+
+    claims = []
+    for c in v["claims"]:
+        row = {**c, "root_id": c.get("root_id", c["id"]), "confidence": sc.confidence(me, c),
+               "private": c.get("private", False)}
+        claims.append(_pick(row, CLAIM_FIELDS))
+    _nodes(g, "Claim", claims)
+
+    descriptions = {d["id"] for d in s["descriptions"]}
+    objects = {o["id"] for o in s["objects"]}
+    about_person = [(c["id"], c["subject_id"], {}) for c in v["claims"] if c["subject_id"] not in descriptions]
+    about_desc = [(c["id"], c["subject_id"], {}) for c in v["claims"] if c["subject_id"] in descriptions]
+    _edges(g, "ABOUT", "Claim", "Person", about_person)
+    _edges(g, "ABOUT", "Claim", "Description", about_desc)
+    _edges(g, "AT", "Claim", "Place", [(c["id"], c["place_id"], {}) for c in v["claims"] if c.get("place_id")])
+    _edges(g, "INVOLVES", "Claim", "Object",
+           [(c["id"], c["object_id"], {}) for c in v["claims"] if c.get("object_id") in objects])
+    _edges(g, "WITNESSED", "Self", "Claim",
+           [(me, c["id"], {"tick": 0}) for c in v["claims"] if c["origin"] == "witnessed"])
+    _edges(g, "HEARD_FROM", "Claim", "Person",
+           [(c["id"], c["heard_from"], {"tick": c.get("tick", 0)}) for c in v["claims"] if c["origin"] == "heard"])
+
+    known = sorted({b for (a, b) in sc.closeness if a == me})
+    _edges(g, "TRUSTS", "Self", "Person",
+           [(me, b, {"score": sc.trust(me, b), "warmth": sc.closeness[(me, b)]}) for b in known])
+
+    rules = v.get("rules", [])
+    _nodes(g, "Rule", [_pick(r, RULE_FIELDS) for r in rules])
+    _edges(g, "USES", "Rule", "Claim", [(r["id"], cid, {}) for r in rules for cid in r["uses"]])
+    gates = v.get("gates", [])
+    _nodes(g, "Gate", [_pick(x, ("id", "min_trust", "cite_pred", "cite_subject_id", "cite_toward_id", "refusal"))
+                       for x in gates])
+    _edges(g, "GUARDS", "Gate", "Claim", [(x["id"], cid, {}) for x in gates for cid in x["guards"]])
+
+
+def build_templates(client: FalkorDB, scenario: dict) -> dict[str, Graph]:
+    """Delete every tpl_* graph and rebuild the 13 templates. Returns them by name."""
+    for name in client.list_graphs():
+        if name.startswith("tpl_"):
+            client.select_graph(name).delete()
+
+    sc = Scenario(scenario)
+    builders = {
+        "tpl_world": lambda g: build_world(g, sc),
+        "tpl_village": lambda g: build_village(g, sc),
+        "tpl_case": lambda g: build_case(g, sc),
+    }
+    for v in scenario["villagers"]:
+        builders[f"tpl_npc_{v['id']}"] = lambda g, v=v: build_npc(g, sc, v)
+
+    expected = set(dbmod.template_graphs())
+    if set(builders) != expected:
+        raise RuntimeError(f"scenario villagers don't match app.db.VILLAGERS: {sorted(set(builders) ^ expected)}")
+
+    graphs = {}
+    for name, build in builders.items():
+        g = client.select_graph(name)
+        _indexes(g)
+        build(g)
+        graphs[name] = g
+    return graphs
