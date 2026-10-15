@@ -9,7 +9,7 @@ import { PLACES, STANDS, skyAt } from "./world";
 
 type Beat = { time: string; text: string; walkers: WalkerSpec[] };
 
-const at = (place: string, dx = 0, dy = 0) => ({ x: PLACES[place].x + dx, y: PLACES[place].y + dy + 40 });
+const at = (place: string, dx = 0, dy = 0) => ({ x: PLACES[place].x + dx, y: PLACES[place].y + dy + 24 });
 
 function beats(): Beat[] {
   return [
@@ -33,7 +33,7 @@ function beats(): Beat[] {
         { id: "jonas", look: "jonas", at: at("manor", -60), speed: 240 }, { id: "wren", look: "wren", at: at("manor", 20) },
         { id: "silas", look: "silas", at: at("mill", -60) }] },
     { time: "21:30", text: "On the Riverside path, Pip, walking home, sees a woman with a lantern heading for the Mill. At the Mill, Elena kills Silas with the hammer.",
-      walkers: [{ id: "elena", look: "elenaNight", at: at("mill", -90), speed: 120 }, { id: "pip", look: "pip", at: { x: STANDS.pip.x, y: STANDS.pip.y } },
+      walkers: [{ id: "elena", look: "elenaNight", at: at("mill", -60), speed: 80 }, { id: "pip", look: "pip", at: { x: STANDS.pip.x, y: STANDS.pip.y } },
         { id: "silas", look: "silas", at: at("mill", -40) }, { id: "jonas", look: "jonas", at: at("manor", -60) },
         { id: "wren", look: "wren", at: at("manor", 20) }] },
     { time: "22:00", text: "Elena is back at her shop. Later she hides the hammer under her floorboards. At 06:00, Brann finds the body.",

@@ -33,7 +33,7 @@ const store = {
 
 const beside = (id: string): Point => {
   const s = STANDS[id];
-  return { x: s.x + (s.x > 800 ? -58 : 58), y: s.y + 8 };
+  return { x: s.x + (s.x > 800 ? -34 : 34), y: s.y + 6 };
 };
 
 function useMuted() {
@@ -214,7 +214,7 @@ export default function Game() {
         const last = steps[steps.length - 1];
         if (last) {
           const vid = (last.args as Record<string, unknown> | undefined)?.villager_id;
-          setInspector((ins) => ins && { ...ins, at: typeof vid === "string" && STANDS[vid] ? beside(vid) : { x: PLACES.square.x + 60, y: PLACES.square.y + 70 } });
+          setInspector((ins) => ins && { ...ins, at: typeof vid === "string" && STANDS[vid] ? beside(vid) : { x: PLACES.square.x - 40, y: PLACES.square.y + 56 } });
         }
         if (events.some((e) => e.type === "clock_tick" || e.type === "detective_done")) {
           api.status(g).then(setStatus).catch(() => undefined);
@@ -285,10 +285,10 @@ export default function Game() {
   const sendInspector = async () => {
     if (!g || inspector?.running) return;
     setInspector({ at: { x: 30, y: 470 }, running: true, result: null, open: true });
-    setTimeout(() => setInspector((ins) => ins && { ...ins, at: { x: PLACES.square.x + 60, y: PLACES.square.y + 70 } }), 50);
+    setTimeout(() => setInspector((ins) => ins && { ...ins, at: { x: PLACES.square.x - 40, y: PLACES.square.y + 56 } }), 50);
     try {
       const result = await api.detective(g);
-      setInspector((ins) => ins && { ...ins, running: false, result, at: { x: PLACES.square.x + 60, y: PLACES.square.y + 70 } });
+      setInspector((ins) => ins && { ...ins, running: false, result, at: { x: PLACES.square.x - 40, y: PLACES.square.y + 56 } });
       const s = await api.status(g);
       setStatus(s);
       setVersion((v) => v + 1);

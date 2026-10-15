@@ -26,7 +26,7 @@ export type Actor = {
 };
 
 const FULL: Camera = { x: 0, y: 0, w: W };
-const MIN_W = 520;
+const MIN_W = 420;
 
 function clamp(c: Camera): Camera {
   const w = Math.max(MIN_W, Math.min(W, c.w));
@@ -34,7 +34,7 @@ function clamp(c: Camera): Camera {
   return { w, x: Math.max(0, Math.min(W - w, c.x)), y: Math.max(0, Math.min(H - h, c.y)) };
 }
 
-function Walker({ id, to, children, onArrive, speed = 220, steps = false }: {
+function Walker({ id, to, children, onArrive, speed = 140, steps = false }: {
   id: string;
   to: Point;
   children: (walking: boolean, dir: Dir) => React.ReactNode;
@@ -176,7 +176,7 @@ export default function Scene({
 
   const camera = useMemo(() => {
     if (!focus) return free;
-    const w = 700;
+    const w = 560;
     const h = (w * H) / W;
     return clamp({ w, x: focus.x - w / 2, y: focus.y - h * 0.46 });
   }, [focus, free]);
@@ -248,12 +248,12 @@ export default function Scene({
           onClick={() => interactive && !suppressClick.current && onVillager?.(v.id)}
           onMouseEnter={() => setHover(v.id)}
           onMouseLeave={() => setHover(null)}>
-          {(hover === v.id && interactive) && <ellipse cx="0" cy="0" rx="30" ry="9" fill="#fff" opacity="0.35" />}
+          {(hover === v.id && interactive) && <ellipse cx="0" cy="0" rx="18" ry="6" fill="#fff" opacity="0.35" />}
           {v.id === hub && (
             <g>
-              <ellipse cx="0" cy="0" rx="34" ry="10" fill="#ffd27a" opacity="0.35" className="pulse" />
+              <ellipse cx="0" cy="0" rx="22" ry="7" fill="#ffd27a" opacity="0.35" className="pulse" />
               {!v.marker && !v.emote && !v.thinking && (
-                <g transform="translate(0 -136)">
+                <g transform="translate(0 -82) scale(0.65)">
                   <g className="float">
                     <rect x="-58" y="-14" width="116" height="22" rx="11" fill="#e8a33d" stroke="#7a5230" strokeWidth="1.5" />
                     <text y="2" textAnchor="middle" fontSize="12" fontWeight="700" fill="#1c1714">hears everything</text>
@@ -263,15 +263,15 @@ export default function Scene({
             </g>
           )}
           <Sprite who={v.id} dir={v.dir} talking={v.talking} mood={v.mood} />
-          <Overhead v={v} />
+          <g transform="translate(0 9) scale(0.62)"><Overhead v={v} /></g>
           {(labels || zoomed || hover === v.id) && !v.talking && (
-            <g transform="translate(0 18)">
+            <g transform="translate(0 13)">
               <rect x={-v.name.length * 3.3 - 8} y="-11" width={v.name.length * 6.6 + 16} height="18" rx="9" fill="#1c1714" opacity="0.72" />
               <text y="2.5" textAnchor="middle" fontSize="11" fill="#f3e6c8">{v.name}</text>
             </g>
           )}
           {minds?.[v.id] && (
-            <g transform="translate(26 -150)"><g className="float">
+            <g transform="translate(14 -88) scale(0.65)"><g className="float">
               <circle cx="-22" cy="34" r="4" fill="#f3eee2" opacity="0.9" />
               <circle cx="-14" cy="22" r="6" fill="#f3eee2" opacity="0.9" />
               <ellipse cx="18" cy="-4" rx="48" ry="26" fill="#f3eee2" opacity="0.95" />
@@ -283,12 +283,12 @@ export default function Scene({
       ))}
 
       {walkers?.map((w) => (
-        <Walker key={w.id} id={w.id} to={w.at} speed={w.speed ?? 160}>
+        <Walker key={w.id} id={w.id} to={w.at} speed={w.speed ?? 100}>
           {(walking, dir) => (
             <g>
               <Sprite who={w.look} walking={walking} dir={dir} />
               {w.label && (
-                <g transform="translate(0 20)">
+                <g transform="translate(0 14)">
                   <rect x={-w.label.length * 3.6 - 10} y="-12" width={w.label.length * 7.2 + 20} height="20" rx="10" fill="#0b1026" opacity="0.8" />
                   <text y="2.5" textAnchor="middle" fontSize="12" fill="#f3e6c8">{w.label}</text>
                 </g>
@@ -299,11 +299,11 @@ export default function Scene({
       ))}
 
       {inspector && (
-        <Walker id="inspector" to={inspector} onArrive={onInspectorArrive} speed={260}>
+        <Walker id="inspector" to={inspector} onArrive={onInspectorArrive} speed={170}>
           {(walking, dir) => (
             <g>
               <Sprite who="inspector" walking={walking} dir={dir} />
-              <g transform="translate(0 18)">
+              <g transform="translate(0 13)">
                 <rect x="-56" y="-11" width="112" height="18" rx="9" fill="#2d5f78" opacity="0.85" />
                 <text y="2.5" textAnchor="middle" fontSize="11" fill="#fff">Inspector Graves</text>
               </g>
@@ -315,7 +315,7 @@ export default function Scene({
         <Walker id="player" to={player} onArrive={onArrive} steps>
           {(walking, dir) => (
             <g>
-              <ellipse cx="0" cy="2" rx="26" ry="8" fill="none" stroke="#ffd27a" strokeWidth="2" opacity="0.7" className="pulse" />
+              <ellipse cx="0" cy="2" rx="16" ry="5" fill="none" stroke="#ffd27a" strokeWidth="2" opacity="0.7" className="pulse" />
               <Sprite who="player" walking={walking} dir={walking ? dir : playerDir ?? dir} />
             </g>
           )}
@@ -324,12 +324,12 @@ export default function Scene({
 
       {bubbles.map((b) => (
         <motion.g key={b.id}
-          initial={{ x: b.from.x, y: b.from.y - 110, opacity: 0, scale: 0.4 }}
+          initial={{ x: b.from.x, y: b.from.y - 70, opacity: 0, scale: 0.3 }}
           animate={{
             x: [b.from.x, (b.from.x + b.to.x) / 2, b.to.x],
-            y: [b.from.y - 110, Math.min(b.from.y, b.to.y) - 200, b.to.y - 110],
+            y: [b.from.y - 70, Math.min(b.from.y, b.to.y) - 130, b.to.y - 70],
             opacity: [0, 1, 1, 0],
-            scale: [0.4, 1, 1, 0.6],
+            scale: [0.3, 0.7, 0.7, 0.4],
           }}
           transition={{ duration: 2.4, delay: b.delay, ease: "easeInOut", times: [0, 0.5, 1] }}>
           <path d="M-18 -12 h36 a6 6 0 0 1 6 6 v12 a6 6 0 0 1 -6 6 h-24 l-8 8 v-8 h-4 a6 6 0 0 1 -6 -6 v-12 a6 6 0 0 1 6 -6 Z"

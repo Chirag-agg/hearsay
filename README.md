@@ -142,7 +142,8 @@ backend/
   mcp_server/server.py the hearsay-graph MCP server
 frontend/src/          village map, interrogation, case board, detective, accusation, God view
 frontend/public/sprites/  the cast's LPC walk sheets and their CREDITS.md
-scripts/               seed, ask, replay_demo, run_detective, build_sprites and the checks
+frontend/public/tiles/    the LPC village map, the windmill and their CREDITS.md
+scripts/               seed, ask, replay_demo, run_detective, build_sprites, build_village and the checks
 ```
 
 ## Cypher queries
@@ -499,3 +500,12 @@ Each piece is licensed CC-BY-SA, OGA-BY, GPL or CC0. The authors and licenses fo
 [frontend/public/sprites/CREDITS.md](frontend/public/sprites/CREDITS.md). The composed sheets are shared under the same terms.
 To rebuild them, check out the generator and run `python scripts/build_sprites.py <checkout>`. The cast's
 outfits are in `scripts/sprites.json`, and `--list` prints the sprite files a sparse checkout needs.
+
+The village map is built from LPC tiles by `scripts/build_village.py`: grass, dirt roads and the river are
+autotiled, and the tavern, smithy, manor and herbalist's cottage are cut from the preview of bluecarrot16's
+"[LPC] Thatched-roof Cottage". Run it with a checkout of the
+[RPG Maker MZ LPC Starter Kit](https://github.com/LiberatedPixelCup/RPG_Maker_MZ_LPC_Starter_Kit), which
+keeps each artist's tiles in their own folders, and the
+[cottage preview](https://opengameart.org/sites/default/files/preview_280.png). It writes the map, the
+windmill frames, `frontend/src/game/village.json` (where every place and villager is) and
+[frontend/public/tiles/CREDITS.md](frontend/public/tiles/CREDITS.md).

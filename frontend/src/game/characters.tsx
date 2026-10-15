@@ -13,7 +13,7 @@ export type Mood = "neutral" | "angry" | "worried" | "guarded" | "happy";
 export const SPRITES: Record<string, { top: number; bottom: number }> = BOUNDS;
 
 const ROW: Record<Dir, number> = { up: 0, left: 1, down: 2, right: 3 };
-const PX = 2.4; // world units per sprite pixel: an adult stands about 115 units tall
+const PX = 1.25; // world units per sprite pixel, the same as the village map: an adult stands about 60 units tall
 const sheet = (who: string) => `${import.meta.env.BASE_URL}sprites/${who}.png`;
 const known = (who: string) => (SPRITES[who] ? who : "player");
 
@@ -35,9 +35,9 @@ function useWalkFrame(walking: boolean) {
 const faceOf = (who: string) => (SPRITES[who].top > 18 ? SPRITES[who].top + 8 : 24);
 
 function MoodMark({ mood, y }: { mood: Mood; y: number }) {
-  if (mood === "worried") return <path className="sweat" transform={`translate(20 ${y - 14})`} d="M0 0 q3 6 0 7.5 q-3 -1.5 0 -7.5 Z" fill="#9fd0f0" stroke="#3a5a7a" strokeWidth="0.8" />;
-  if (mood === "angry") return <path transform={`translate(18 ${y - 24})`} d="M0 6 l5 -5 M5 9 l7 -2 M2 1 l1 -7" stroke="#e0452d" strokeWidth="2.4" strokeLinecap="round" />;
-  if (mood === "happy") return <path transform={`translate(20 ${y - 20})`} d="M0 0 l2 -5 l2 5 l5 1 l-5 2 l-2 5 l-2 -5 l-5 -2 Z" fill="#ffe28a" />;
+  if (mood === "worried") return <path className="sweat" transform={`translate(11 ${y - 10})`} d="M0 0 q2 4 0 5 q-2 -1 0 -5 Z" fill="#9fd0f0" stroke="#3a5a7a" strokeWidth="0.8" />;
+  if (mood === "angry") return <path transform={`translate(9 ${y - 16})`} d="M0 4 l3.5 -3.5 M3.5 6 l5 -1.5 M1.5 0.5 l0.7 -5" stroke="#e0452d" strokeWidth="1.8" strokeLinecap="round" />;
+  if (mood === "happy") return <path transform={`translate(11 ${y - 14})`} d="M0 0 l1.4 -3.5 l1.4 3.5 l3.5 0.7 l-3.5 1.4 l-1.4 3.5 l-1.4 -3.5 l-3.5 -1.4 Z" fill="#ffe28a" />;
   return null;
 }
 
@@ -53,7 +53,7 @@ export function Sprite({ who, dir = "down", walking = false, talking = false, mo
   const { bottom } = SPRITES[id];
   return (
     <g className={`sprite ${talking ? "talking" : ""}`}>
-      <ellipse cx="0" cy="0" rx="17" ry="5" fill="#000" opacity="0.3" />
+      <ellipse cx="0" cy="0" rx="10" ry="3.2" fill="#000" opacity="0.3" />
       <g className={walking ? "" : "breathe"}>
         <svg x={-32 * PX} y={-bottom * PX} width={64 * PX} height={64 * PX} viewBox={`${frame * 64} ${ROW[dir] * 64} 64 64`}>
           <image href={sheet(id)} width="576" height="256" style={{ imageRendering: "pixelated" }} />

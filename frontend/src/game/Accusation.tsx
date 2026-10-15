@@ -58,7 +58,7 @@ export default function Accusation({ g, answers, names, onVerdict, onClose }: {
               return (
                 <g key={id} transform={`translate(${x} 150)`} className="cursor-pointer" onClick={() => setSuspect(id)}>
                   {on && <ellipse cx="0" cy="-60" rx="40" ry="80" fill="#ffd27a" opacity="0.35" />}
-                  <g transform={`scale(${on ? 1.12 : 1})`}><Sprite who={id} talking={on} mood={on ? "worried" : "neutral"} /></g>
+                  <g transform={`scale(${on ? 2.15 : 1.9})`}><Sprite who={id} talking={on} mood={on ? "worried" : "neutral"} /></g>
                   <text y="16" textAnchor="middle" fontSize="13" fill={on ? "#9a2f1f" : "#3a2a1e"} fontWeight={on ? 700 : 400}>
                     {names[id]?.replace(/^(Father|Lady|Dr\.|Constable) /, "").split(" ")[0]}
                   </text>
