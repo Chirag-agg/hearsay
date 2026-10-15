@@ -28,6 +28,15 @@ python scripts/smoke_cypher.py
 
 `seed.py` rebuilds the 13 `tpl_*` template graphs from the demo case; run it again after any change to the JSON. `smoke_cypher.py` runs every query on a small fixture graph, then checks the answers the demo depends on against the templates, and must pass before any query is wired into code. FalkorDB Browser is at http://localhost:3000.
 
+Run the API (from `backend/`): `uvicorn app.main:app --reload`, then:
+
+| Route | What it does |
+| --- | --- |
+| `POST /games` | New game: copies the 13 template graphs (already 12 gossip ticks in); returns `game_id` and the clock. Past `MAX_GAMES`, deletes the game seen least recently |
+| `GET /games/{g}` | Clock, questions asked and left, session |
+| `GET /games/{g}/village` | People, places, roads, who knows whom, facts, gossip hubs (Q4, PageRank), circles (Q5, cached per game), plus the Cypher behind both |
+| `GET /debug/queries` | Live query monitor: latest queries with graph and ms, and per-query totals with the FalkorDB features each uses |
+
 If something else already uses port 6379 (an error like `unknown command 'GRAPH.LIST'` means you reached a plain Redis), set `FALKORDB_HOST_PORT=6380` and `FALKORDB_PORT=6380` in `.env` and run `docker compose up -d falkordb` again.
 
 To run the backend in Docker as well: `docker compose up --build`, then open http://localhost:8000/health.
