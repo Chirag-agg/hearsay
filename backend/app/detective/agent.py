@@ -31,10 +31,15 @@ class Detective:
         if len(self.steps) >= self.max_steps:
             raise StopIteration("step budget used")
         result = await self.session.call_tool(tool, {"game_id": self.g, **args})
-        structured = _field(result, "structured_content", "structuredContent")
-        data = structured if structured else json.loads(result.content[0].text) if result.content else {}
-        if _field(result, "is_error", "isError"):
-            data = {"error": result.content[0].text if result.content else "tool error"}
+        text = result.content[0].text if result.content else ""
+        if _field(result, "is_error", "isError"):  # a failed tool is a result to reason about, not a crash
+            data = {"error": text or "tool error"}
+        else:
+            structured = _field(result, "structured_content", "structuredContent")
+            try:
+                data = structured if structured else json.loads(text) if text else {}
+            except json.JSONDecodeError:
+                data = {"error": text}
         cypher = data.pop("cypher", []) if isinstance(data, dict) else []
         step = {"step": len(self.steps) + 1, "tool": tool, "args": args, "why": why,
                 "cypher": cypher, "summary": summarize(tool, data)}

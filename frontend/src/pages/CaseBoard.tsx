@@ -56,10 +56,21 @@ export default function CaseBoardPage({ ctx }: { ctx: GameCtx }) {
 
   const heard = ctx.answers.flatMap((a) => a.claims.filter((c) => c.reported_as === "heard").map((c) => ({ ...c, by: a.name })));
   const names = Object.fromEntries(ctx.village.people.map((p) => [p.id, p.name]));
+  const handoffs = (board?.nodes ?? []).filter((n) => n.kind === "Handoff");
+  const handoff = handoffs[handoffs.length - 1];
 
   return (
     <div className="grid gap-4 2xl:grid-cols-[1fr_420px]">
       <div className="space-y-4">
+        {handoff && (
+          <section className="card border-moss/50 p-3 text-sm">
+            <span className="label">The detective left a note</span>
+            <p className="mt-1">{String(handoff.summary)}</p>
+            <p className="mt-0.5 text-xs text-muted">
+              {String(handoff.steps)} tool calls · {String(handoff.open_leads)} open leads
+            </p>
+          </section>
+        )}
         <section className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-edge px-3 py-2">
             <h2 className="font-display text-xl">The case board</h2>
