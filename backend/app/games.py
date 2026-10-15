@@ -68,6 +68,13 @@ def touch(g: str) -> dict:
     return rows[0]["g"]
 
 
+def new_session(g: str) -> dict:
+    """A returning player: villagers can tell a new visit from a follow-up question."""
+    touch(g)
+    _meta("MATCH (x:Game {id: $id}) SET x.session = x.session + 1", {"id": g})
+    return status(g)
+
+
 def status(g: str) -> dict:
     """Clock and questions left. Each question is one gossip tick after the pre-game ones."""
     game = touch(g)

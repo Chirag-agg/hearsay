@@ -17,7 +17,7 @@ PUBLIC_FIELDS = ("id", "name", "role", "sex", "adult", "build")
 ENGINE_FIELDS = ("accuracy", "honesty", "talkativeness", "mutation_bias")
 CLAIM_FIELDS = ("id", "root_id", "parent_id", "pred", "subject_id", "place_id", "object_id", "toward_id",
                 "t_from", "t_to", "confidence", "origin", "salience", "mutated", "private",
-                "crowns", "note", "dormant")
+                "crowns", "note", "dormant", "gated")
 RULE_FIELDS = ("id", "trigger", "action", "active", "subject_id", "t_from", "t_to", "topic", "asked_of",
                "hides", "uses", "supersedes", "stretch")
 
@@ -131,10 +131,12 @@ def build_npc(g: str, sc: Scenario, v: dict) -> None:
     _nodes(g, "Description", [_pick(d, ("id", "text", "sex", "adult", "build", "carrying"))
                               for d in s["descriptions"]])
 
+    gated = {cid for gate in v.get("gates", []) for cid in gate["guards"]}
     claims = []
     for c in v["claims"]:
+        # gated: a secret a Gate guards, so Q1 returns it and the agent decides whether to share it
         row = {**c, "root_id": c.get("root_id", c["id"]), "confidence": sc.confidence(me, c),
-               "private": c.get("private", False)}
+               "private": c.get("private", False), "gated": c["id"] in gated or None}
         claims.append(_pick(row, CLAIM_FIELDS))
     _nodes(g, "Claim", claims)
 

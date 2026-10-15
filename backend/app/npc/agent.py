@@ -19,7 +19,7 @@ from app.npc import llm
 from app.npc.parse import PLACE_ALIASES, TITLES, Parser
 from app.npc.render import guardrail, template_answer
 
-MAX_CLAIMS = 3
+MAX_CLAIMS = 5  # Q1's LIMIT; enough for one question to cover a villager's evening
 MOTIVE_PREDS = {"OWES", "THREATENED", "ARGUED_WITH"}
 
 
@@ -94,12 +94,18 @@ class Villager:
 
     # ------------------------------------------------------------ the loop
 
-    def ask(self, question: str, *, trust: float | None = None,
-            cites: list[tuple[str, str, str]] = (), replay: bool | None = None) -> dict:
+    def ask(self, question: str, *, trust: float | None = None, cites: list[tuple[str, str, str]] = (),
+            replay: bool | None = None, root_id: str | None = None) -> dict:
+        """Answer a question. With root_id (following "who told you?"), the villager is asked for
+        their own version of that rumor (Q1d) instead of what the question's keywords pick."""
         replay = replay_mode() if replay is None else replay
         trust = self.me.get("player_trust", 0.5) if trust is None else trust
         parsed = self.parser.parse(question)
-        rows, calls = self._retrieve(parsed)
+        if root_id:
+            calls = [{"query": "q01d_recall_rumor", "params": {"root_id": "(hidden)"}}]
+            rows = db.run(self.graph, "q01d_recall_rumor", {"root_id": root_id})
+        else:
+            rows, calls = self._retrieve(parsed)
         rows = self._apply_rules(parsed, rows)
 
         held, refusals = self._gates(trust, list(cites))

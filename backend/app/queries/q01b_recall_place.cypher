@@ -6,6 +6,7 @@
 // Like Q1, claims an active Rule covers are dropped before LIMIT.
 MATCH (c:Claim)-[:AT]->(pl:Place {id: $place})
 WHERE c.t_from <= $t_to AND c.t_to >= $t_from AND c.confidence >= 0.2
+  AND (coalesce(c.private, false) = false OR coalesce(c.gated, false))
 OPTIONAL MATCH (r:Rule {active: true})
 WHERE c.id IN r.hides
    OR (r.subject_id = c.subject_id AND c.t_from < r.t_to AND r.t_from < c.t_to AND NOT c.id IN r.uses)

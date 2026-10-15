@@ -96,7 +96,7 @@ PARAMS = {
     "victim": "silas", "weapon_place": "smithy", "death_t": 1290, "sighting": "d1",
     "key": "stayed_but_left:c1:c2", "kind": "stayed_but_left", "claim_1": "c1", "claim_2": "c2",
     "detail": "smoke", "tick": 2, "stmt_1": "s1", "stmt_2": "s2",
-    "place": "chapel", "rule_id": "r1", "claim_ids": ["c2", "c1"],
+    "place": "chapel", "rule_id": "r1", "claim_ids": ["c2", "c1"], "root_id": "r2",
 }
 
 def pairs(rows: list[dict]) -> list[tuple]:
@@ -110,6 +110,7 @@ EXPECT = {
     == [("c1", "Elena Marsh"), ("c2", "Elena Marsh"), ("c3", "Elena Marsh")],
     "q01c_claim_details": lambda rows: sorted((r["claim_id"], r["who"], r["place"]) for r in rows)
     == [("c1", "Elena Marsh", "Chapel"), ("c2", "Elena Marsh", "Chapel")],
+    "q01d_recall_rumor": lambda rows: [r["claim_id"] for r in rows] == ["c2"],
     "q06a_two_places": lambda rows: pairs(rows) == [("s1", "c1", "s5", "c5"), ("s3", "c3", "s5", "c5")],
     "q06b_stayed_but_left": lambda rows: pairs(rows) == [("s1", "c1", "s2", "c2")],
     "q07_trace_rumor": lambda rows: len(rows) == 1 and rows[0]["chain"][0]["claim"] == "c2",
@@ -125,6 +126,8 @@ EXPECT = {
         {"place": "chapel", "eyewitnesses": ["bess"], "unverified": [], "confirmed": False},
         {"place": "tavern", "eyewitnesses": ["aldric"], "unverified": [], "confirmed": False},
     ],
+    # Elena fits d1 (3 points). Guards the FalkorDB quirk that zeroed the fit term after aggregations.
+    "q14_rank_suspects": lambda rows: any(r["suspect_id"] == "elena" and r["fits"] == 1 for r in rows),
     "w01_merge_contradiction": lambda rows: rows == [{"new": True}],
     "w02_activate_rule": lambda rows: rows == [{"rule_id": "r1", "claims": 1, "superseded": None}],
 }
