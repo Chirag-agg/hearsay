@@ -5,7 +5,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "./audio";
-import { Figure, LOOKS } from "./characters";
+import { Figure, LOOKS, type Mood } from "./characters";
 import { H, Lighting, PLACES, W, World, type Sky } from "./world";
 
 export type Point = { x: number; y: number };
@@ -22,6 +22,7 @@ export type Actor = {
   dim?: boolean;
   marker?: boolean; // gold "!": someone you should talk to
   emote?: string; // a short-lived emoji over the head
+  mood?: Mood;
 };
 
 const FULL: Camera = { x: 0, y: 0, w: W };
@@ -258,7 +259,7 @@ export default function Scene({
             </g>
           )}
           <g transform="scale(1.15)">
-            <Figure look={LOOKS[v.id]} facing={v.facing ?? 1} talking={v.talking} />
+            <Figure look={LOOKS[v.id]} facing={v.facing ?? 1} talking={v.talking} mood={v.mood} />
           </g>
           <Overhead v={v} />
           {(labels || zoomed || hover === v.id) && !v.talking && (

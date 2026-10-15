@@ -104,6 +104,8 @@ pre.cypher {
 @keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
 
 /* --- ambient life --- */
+.sweat { animation: sweat 1.6s ease-in infinite; }
+@keyframes sweat { 0% { transform: translateY(0); opacity: 0 } 20% { opacity: 1 } 100% { transform: translateY(8px); opacity: 0 } }
 .figure { filter: drop-shadow(0 0 0.7px #241812) drop-shadow(0 0 0.5px #241812); }
 .cloud-shadow { animation: cloudShadow 140s linear infinite; }
 @keyframes cloudShadow { from { transform: translateX(-300px) } to { transform: translateX(1900px) } }
@@ -129,6 +131,15 @@ pre.cypher {
 @keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
 
 /* --- UI motion --- */
+.drift { animation: drift-cam 60s ease-in-out infinite alternate; transform-origin: 60% 50%; }
+@keyframes drift-cam { from { transform: scale(1.12) translate(1.5%, 1%) } to { transform: scale(1.22) translate(-2%, -1.5%) } }
+.shimmer {
+  background: linear-gradient(100deg, #e8a33d 20%, #fff2c4 40%, #ffd27a 50%, #e8a33d 70%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 6s ease-in-out infinite;
+}
+@keyframes shimmer { 0%, 100% { background-position: 100% 0 } 50% { background-position: 0 0 } }
 .caret::after { content: "▍"; animation: caret 0.8s steps(1) infinite; margin-left: 2px; color: #7a5230; }
 @keyframes caret { 50% { opacity: 0 } }
 .fog { animation: fog 40s linear infinite; }

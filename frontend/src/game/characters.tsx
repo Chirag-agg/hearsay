@@ -151,11 +151,22 @@ function HatShape({ look }: { look: Look }) {
   }
 }
 
-export function Figure({ look, walking = false, talking = false, facing = 1 }: {
+export type Mood = "neutral" | "angry" | "worried" | "guarded" | "happy";
+
+const BROWS: Record<Mood, string> = {
+  neutral: "M-6.5 -88.5 l4 -0.6 M2.5 -89.1 l4 0.6",
+  angry: "M-6.8 -90 l4.4 2 M2.4 -88 l4.4 -2",
+  worried: "M-6.8 -88 l4.4 -2 M2.4 -90 l4.4 2",
+  guarded: "M-6.5 -88 l4.4 0 M2.1 -88 l4.4 0",
+  happy: "M-6.5 -89 q2.2 -1.6 4.4 0 M2.1 -89 q2.2 -1.6 4.4 0",
+};
+
+export function Figure({ look, walking = false, talking = false, facing = 1, mood = "neutral" }: {
   look: Look;
   walking?: boolean;
   talking?: boolean;
   facing?: 1 | -1;
+  mood?: Mood;
 }) {
   const w = look.width ?? 1;
   const ex = new Set(look.extras ?? []);
@@ -207,11 +218,15 @@ export function Figure({ look, walking = false, talking = false, facing = 1 }: {
         </g>
         <circle cx="-7" cy="-79.5" r="2.2" fill="#e8907a" opacity="0.35" />
         <circle cx="7" cy="-79.5" r="2.2" fill="#e8907a" opacity="0.35" />
+        <path d={BROWS[mood]} stroke={shade(look.hair, -0.1)} strokeWidth="1.3" strokeLinecap="round" fill="none" />
         {talking ? (
           <ellipse className="talk" cx="0" cy="-78" rx="2.4" ry="1.6" fill="#5a2a22" />
         ) : (
-          <path d="M-2.5 -78.5 Q0 -77 2.5 -78.5" stroke="#5a2a22" strokeWidth="1.1" fill="none" />
+          <path d={mood === "angry" || mood === "worried" ? "M-2.5 -77.5 Q0 -79 2.5 -77.5" : mood === "happy" ? "M-3 -79 Q0 -76 3 -79" : "M-2.5 -78.5 Q0 -77 2.5 -78.5"}
+            stroke="#5a2a22" strokeWidth="1.1" fill="none" />
         )}
+        {mood === "worried" && <path className="sweat" d="M10 -90 q2 4 0 5 q-2 -1 0 -5 Z" fill="#9fd0f0" />}
+        {mood === "angry" && <path d="M9 -95 l3 -3 M12 -93 l4 -1 M10 -98 l1 -4" stroke="#c2412d" strokeWidth="1.4" strokeLinecap="round" />}
         {ex.has("spectacles") && <g stroke="#2a2a2a" strokeWidth="0.9" fill="#cfe6ff" fillOpacity="0.25"><circle cx="-4.2" cy="-84" r="3" /><circle cx="4.2" cy="-84" r="3" /><path d="M-1.2 -84 h2.4" /></g>}
         {ex.has("beard") && <path d="M-10 -82 Q-10 -68 0 -66 Q10 -68 10 -82 Q6 -76 0 -76 Q-6 -76 -10 -82 Z" fill={look.hair} />}
         {ex.has("mustache") && <path d="M-5 -79.5 Q0 -82 5 -79.5 Q2 -78 0 -79 Q-2 -78 -5 -79.5 Z" fill={look.hair} />}
@@ -223,20 +238,20 @@ export function Figure({ look, walking = false, talking = false, facing = 1 }: {
 }
 
 /** A head-and-shoulders portrait of a figure, for the dialogue box and cards. */
-export function Portrait({ who, size = 120, talking = false, mood }: { who: string; size?: number; talking?: boolean; mood?: string }) {
+export function Portrait({ who, size = 120, talking = false, mood }: { who: string; size?: number; talking?: boolean; mood?: Mood }) {
   const look = LOOKS[who] ?? LOOKS.player;
   const s = look.scale ?? 1;
   return (
     <svg viewBox={`-30 ${-118 * s} 60 ${66 * s}`} width={size} height={size} className="overflow-visible">
       <defs>
         <radialGradient id={`pbg-${who}`} cx="50%" cy="40%">
-          <stop offset="0%" stopColor={mood === "guarded" ? "#5a3a3a" : "#5a4a34"} />
+          <stop offset="0%" stopColor={mood === "angry" ? "#6a2a22" : mood === "guarded" || mood === "worried" ? "#4a3a4a" : "#5a4a34"} />
           <stop offset="100%" stopColor="#1c1714" />
         </radialGradient>
       </defs>
       <clipPath id={`pclip-${who}-${size}`}><circle cx="0" cy={-85 * s} r="29" /></clipPath>
       <circle cx="0" cy={-85 * s} r="29" fill={`url(#pbg-${who})`} />
-      <g clipPath={`url(#pclip-${who}-${size})`}><Figure look={look} talking={talking} /></g>
+      <g clipPath={`url(#pclip-${who}-${size})`}><Figure look={look} talking={talking} mood={mood} /></g>
     </svg>
   );
 }

@@ -61,6 +61,7 @@ export default function Game() {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [emotes, setEmotes] = useState<Record<string, string>>({});
   const [glance, setGlance] = useState<Record<string, 1 | -1>>({});
+  const [grudges, setGrudges] = useState<Set<string>>(new Set()); // villagers whose trust in you dropped
   const [version, setVersion] = useState(0);
   const seq = useRef(0);
 
@@ -152,6 +153,7 @@ export default function Game() {
       setFeed([]);
       setAnswers([]);
       setUnlocked(new Set());
+      setGrudges(new Set());
       setPendingSource(null);
       setPlayer(PLAYER_HOME);
       setInspector(null);
@@ -269,6 +271,10 @@ export default function Game() {
     setFollow(null);
     setVersion((v) => v + 1);
     if (pendingSource?.id === a.villager) setPendingSource(null);
+    if (a.events.some((e) => e.type === "mood_changed")) {
+      setGrudges((gr) => new Set([...gr, a.villager]));
+      emote(a.villager, "😠", 4000);
+    }
     if (a.contradictions_new.length) {
       sound.sting();
       emote(a.villager, "❗", 3500);
@@ -353,6 +359,7 @@ export default function Game() {
     thinking: talkingTo === id && thinking,
     marker: !talkingTo && !minds && obj.targets.includes(id),
     emote: emotes[id],
+    mood: emotes[id] === "❗" ? "worried" : grudges.has(id) || emotes[id] === "😠" ? "angry" : undefined,
     facing: (talkingTo === id ? (player.x < STANDS[id].x ? -1 : 1) : glance[id] ?? 1) as 1 | -1,
   }));
   const mindCounts = minds && Object.fromEntries(Object.entries(minds).map(([id, m]) => [id, { beliefs: m.claims.length, heard: m.heard, mutated: m.mutated }]));
@@ -419,6 +426,7 @@ export default function Game() {
               if (s.source && s.source_name) setPendingSource({ id: s.source, name: s.source_name });
             }}
             onFollow={onFollow}
+            outerMood={grudges.has(talkingTo) ? "angry" : undefined}
             onLeave={() => { setTalkingTo(null); setFollow(null); }} />
         )}
       </AnimatePresence>

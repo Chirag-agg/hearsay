@@ -63,6 +63,21 @@ If something else already uses port 6379 (an error like `unknown command 'GRAPH.
 
 **LLM (optional):** any OpenAI-compatible API (`LLM_PROVIDER=groq` or `openai`, `LLM_MODEL`, `LLM_API_KEY`). The LLM only words answers and picks the detective's tools. With `REPLAY=1`, or no LLM configured, villagers answer in template sentences and the detective follows a scripted plan, so every run is identical.
 
+## Playing
+
+Click a villager and your detective walks over; the camera closes in and they answer in their own voice. Everything they say becomes an evidence card. On hearsay, ask **“Who told you?”** and go and question the source: that's how you walk a rumor back to whoever actually saw it. The compass in the corner suggests the next lead, and a gold **!** marks who to see.
+
+| Control | Does |
+| --- | --- |
+| Click a villager | Walk over and question them |
+| Drag · scroll | Look around · zoom |
+| 1–4 | Pick a question in a conversation |
+| N | Notebook: evidence, red-string contradictions, wanted posters, rumor traces, the raw graph |
+| M | Sound on or off (all synthesized; no audio files) |
+| Esc | Close a panel or leave a conversation |
+
+The top bar sends for **Inspector Graves** (the MCP detective agent, who walks the village as he works), opens **Mind's eye** (every villager's memory graph), the **Graph lens** (every FalkorDB query, live), and **Accuse**, which ends in a flashback of what really happened.
+
 ## Play from the terminal
 
 ```bash

@@ -12,17 +12,21 @@ export function Title({ canContinue, busy, error, onNew, onContinue }: {
   onNew: () => void;
   onContinue: () => void;
 }) {
+  const [lamp, setLamp] = useState({ x: 50, y: 60 });
   return (
-    <div className="absolute inset-0 overflow-hidden bg-black">
-      <div className="absolute inset-0 scale-110 opacity-90">
+    <div className="absolute inset-0 overflow-hidden bg-black"
+      onPointerMove={(e) => setLamp({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 })}>
+      <div className="drift absolute inset-0 opacity-90">
         <Scene sky={skyAt(0, true)} villagers={[]} bubbles={[]} interactive={false} />
       </div>
+      <div className="pointer-events-none absolute inset-0 transition-[background] duration-300"
+        style={{ background: `radial-gradient(260px 220px at ${lamp.x}% ${lamp.y}%, rgba(255,200,110,0.22), transparent 70%), radial-gradient(1400px 900px at ${lamp.x}% ${lamp.y}%, transparent 30%, rgba(0,0,0,0.55) 80%)` }} />
       <div className="fog pointer-events-none absolute inset-y-0 -left-1/4 w-[150%]"
         style={{ background: "radial-gradient(60% 30% at 30% 70%, rgba(200,210,230,0.18), transparent 70%), radial-gradient(50% 25% at 75% 60%, rgba(200,210,230,0.14), transparent 70%)" }} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80" />
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 px-4 text-center">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1.2 }}>
-          <h1 className="font-display text-7xl tracking-[0.12em] text-[#ffd27a] drop-shadow-[0_0_30px_rgba(255,180,80,0.45)] sm:text-8xl">HEARSAY</h1>
+          <h1 className="shimmer font-display text-7xl tracking-[0.12em] drop-shadow-[0_0_30px_rgba(255,180,80,0.45)] sm:text-8xl">HEARSAY</h1>
           <p className="mt-3 font-display text-xl italic text-[#e8dcc0] sm:text-2xl">A village that remembers. A graph that never lies.</p>
         </motion.div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="flex flex-col gap-3">

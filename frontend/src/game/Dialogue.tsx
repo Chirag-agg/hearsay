@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { api, type Answer, type Chip, type Source } from "../api";
 import { sound } from "./audio";
-import { Portrait } from "./characters";
+import { Portrait, type Mood } from "./characters";
 
 const GREETING: Record<string, string> = {
   bess: "What'll it be, detective? Everyone talks in my tavern, and I hear all of it.",
@@ -61,7 +61,7 @@ function Typewriter({ text, onDone }: { text: string; onDone: () => void }) {
 }
 
 export default function Dialogue({
-  g, villager, name, role, questionsLeft, statements, pending, onAnswer, onFollow, onLeave, onThinking, onSource,
+  g, villager, name, role, questionsLeft, statements, pending, onAnswer, onFollow, onLeave, onThinking, onSource, outerMood,
 }: {
   g: string;
   villager: string;
@@ -75,6 +75,7 @@ export default function Dialogue({
   onLeave: () => void;
   onThinking?: (thinking: boolean) => void;
   onSource?: (s: Source) => void;
+  outerMood?: Mood;
 }) {
   const [line, setLine] = useState(GREETING[villager] ?? "Yes?");
   const [typing, setTyping] = useState(true);
@@ -140,7 +141,8 @@ export default function Dialogue({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const mood = answer?.emotion === "guarded" || (answer?.withheld ?? 0) > 0 ? "guarded" : undefined;
+  const mood: Mood = outerMood ?? (answer?.contradictions_new.length ? "worried"
+    : answer?.emotion === "guarded" || (answer?.withheld ?? 0) > 0 ? "guarded" : "neutral");
   const out = questionsLeft <= 0;
 
   return (
@@ -155,7 +157,7 @@ export default function Dialogue({
           </div>
           <div className="text-left lg:text-center">
             <div className="wood inline-block cursor-default px-4 py-1 text-lg">{name}</div>
-            <div className="mt-1 text-xs italic text-[#6b5040]">{role}{mood ? " · guarded" : ""}</div>
+            <div className="mt-1 text-xs italic text-[#6b5040]">{role}{mood !== "neutral" ? ` · ${mood}` : ""}</div>
           </div>
         </div>
 
