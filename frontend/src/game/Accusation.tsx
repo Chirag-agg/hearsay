@@ -4,6 +4,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { api, type Answer, type Verdict } from "../api";
+import { sound } from "./audio";
 import { Figure, LOOKS } from "./characters";
 
 const MOTIVES = ["A debt to Silas they couldn't pay", "Silas threatened to take their livelihood", "A quarrel that turned violent", "To keep a secret"];
@@ -28,7 +29,10 @@ export default function Accusation({ g, answers, names, onVerdict, onClose }: {
     setBusy(true);
     setError(null);
     try {
-      setVerdict(await api.accuse(g, suspect, motive, evidence));
+      sound.gavel();
+      const v = await api.accuse(g, suspect, motive, evidence);
+      setVerdict(v);
+      if (v.correct) sound.chime(); else sound.sting();
     } catch (e) {
       setError(String(e));
     } finally {

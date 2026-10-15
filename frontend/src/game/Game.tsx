@@ -1,19 +1,23 @@
 // HEARSAY, the game: title -> briefing -> the village by day -> (accusation) -> the flashback.
 // Click a villager to walk over and question them; follow rumors from mouth to mouth; pin
 // evidence in the notebook; send for the inspector; accuse.
+//
+// Keys: M sound, N notebook, Esc close or leave, 1-4 pick a question in a conversation.
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, hhmm, type Answer, type DetectiveStep, type GameEvent, type GodClaim, type Status, type Village } from "../api";
+import { api, hhmm, type Answer, type DetectiveStep, type GameEvent, type GodClaim, type Status, type Verdict, type Village } from "../api";
 import QueryMonitor from "../components/QueryMonitor";
 import Accusation from "./Accusation";
+import { sound } from "./audio";
 import { Portrait } from "./characters";
 import Dialogue, { type Follow } from "./Dialogue";
 import Flashback from "./Flashback";
 import { ActionBar, Watch, Whispers } from "./Hud";
 import InspectorLog from "./InspectorLog";
 import Notebook from "./Notebook";
-import Scene, { type Bubble, type Point } from "./Scene";
+import { ChapterCard, MILESTONES, MilestoneBanner, QuestTracker, milestonesFor, objective, type Milestone } from "./quests";
+import Scene, { type Actor, type Bubble, type Point } from "./Scene";
 import { Briefing, Title } from "./Title";
 import { PLACES, PLAYER_HOME, STANDS, skyAt } from "./world";
 
@@ -32,6 +36,12 @@ const beside = (id: string): Point => {
   return { x: s.x + (s.x > 800 ? -58 : 58), y: s.y + 8 };
 };
 
+function useMuted() {
+  const [muted, setMuted] = useState(sound.muted);
+  useEffect(() => sound.onChange(setMuted), []);
+  return muted;
+}
+
 export default function Game() {
   const [mode, setMode] = useState<Mode>("title");
   const [g, setG] = useState<string | null>(() => store.get(STORE));
@@ -43,12 +53,21 @@ export default function Game() {
 
   const [player, setPlayer] = useState<Point>(PLAYER_HOME);
   const [talkingTo, setTalkingTo] = useState<string | null>(null);
+  const [thinking, setThinking] = useState(false);
   const [follow, setFollow] = useState<Follow | null>(null);
+  const [pendingSource, setPendingSource] = useState<{ id: string; name: string } | null>(null);
 
   const [feed, setFeed] = useState<GameEvent[]>([]);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [emotes, setEmotes] = useState<Record<string, string>>({});
+  const [glance, setGlance] = useState<Record<string, 1 | -1>>({});
   const [version, setVersion] = useState(0);
   const seq = useRef(0);
+
+  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  const [banner, setBanner] = useState<Milestone | null>(null);
+  const bannerQueue = useRef<Milestone[]>([]);
+  const [chapter, setChapter] = useState<number | null>(null);
 
   const [notebook, setNotebook] = useState<{ open: boolean; claim?: string | null }>({ open: false });
   const [accusing, setAccusing] = useState(false);
@@ -56,10 +75,54 @@ export default function Game() {
   const [minds, setMinds] = useState<Record<string, { claims: GodClaim[]; heard: number; mutated: number }> | null>(null);
   const [mindOf, setMindOf] = useState<string | null>(null);
   const [inspector, setInspector] = useState<{ at: Point; running: boolean; result: { mode: string; steps: DetectiveStep[]; report: string } | null; open: boolean } | null>(null);
-  const [hint, setHint] = useState(true);
+  const muted = useMuted();
 
   const names = useMemo(() => Object.fromEntries((village?.people ?? []).map((p) => [p.id, p.name])), [village]);
   const roles = useMemo(() => Object.fromEntries((village?.people ?? []).map((p) => [p.id, p.role])), [village]);
+  const hub = village?.gossip_hubs[0]?.id;
+
+  // ---------------------------------------------------------------- milestones and emotes
+  const showNextBanner = useCallback(() => {
+    const next = bannerQueue.current.shift() ?? null;
+    setBanner(next);
+    if (next) {
+      sound.chime();
+      window.setTimeout(showNextBanner, 3400);
+    }
+  }, []);
+
+  const unlock = useCallback((ids: string[]) => {
+    setUnlocked((u) => {
+      const fresh = ids.filter((id) => !u.has(id) && MILESTONES[id]);
+      if (!fresh.length) return u;
+      const next = new Set([...u, ...fresh]);
+      if (g) store.set(`${STORE}.${g}.milestones`, JSON.stringify([...next]));
+      const idle = bannerQueue.current.length === 0;
+      bannerQueue.current.push(...fresh.map((id) => MILESTONES[id]));
+      if (idle) window.setTimeout(showNextBanner, 300);
+      return next;
+    });
+  }, [g, showNextBanner]);
+
+  const emote = useCallback((id: string, e: string, ms = 2800) => {
+    setEmotes((m) => ({ ...m, [id]: e }));
+    window.setTimeout(() => setEmotes((m) => {
+      if (m[id] !== e) return m;
+      const { [id]: _, ...rest } = m;
+      return rest;
+    }), ms);
+  }, []);
+
+  // Villagers glance around now and then.
+  useEffect(() => {
+    if (mode !== "play") return;
+    const t = window.setInterval(() => {
+      const ids = Object.keys(STANDS);
+      const id = ids[Math.floor(Math.random() * ids.length)];
+      setGlance((gl) => ({ ...gl, [id]: gl[id] === -1 ? 1 : -1 }));
+    }, 2600);
+    return () => window.clearInterval(t);
+  }, [mode]);
 
   // ---------------------------------------------------------------- game lifecycle
   const load = useCallback(async (id: string) => {
@@ -71,23 +134,27 @@ export default function Game() {
     setFeed([...past.events].reverse().slice(0, 40));
     try {
       setAnswers(JSON.parse(store.get(`${STORE}.${id}.answers`) ?? "[]"));
+      setUnlocked(new Set(JSON.parse(store.get(`${STORE}.${id}.milestones`) ?? "[]")));
     } catch {
       setAnswers([]);
+      setUnlocked(new Set());
     }
   }, []);
 
   const newGame = async () => {
     setBusy(true);
     setError(null);
+    sound.setMuted(false); // the click is the user gesture browsers need for sound
     try {
       const s = await api.newGame();
       store.set(STORE, s.game_id);
       setG(s.game_id);
       setFeed([]);
       setAnswers([]);
+      setUnlocked(new Set());
+      setPendingSource(null);
       setPlayer(PLAYER_HOME);
       setInspector(null);
-      setHint(true);
       await load(s.game_id);
       setMode("briefing");
     } catch (e) {
@@ -101,9 +168,9 @@ export default function Game() {
     if (!g) return;
     setBusy(true);
     setError(null);
+    sound.setMuted(false);
     try {
       await load(g);
-      setHint(false);
       setMode("play");
     } catch {
       store.set(STORE, null);
@@ -119,6 +186,10 @@ export default function Game() {
     if (g && status) store.set(`${STORE}.${g}.answers`, JSON.stringify(answers.slice(-60)));
   }, [g, status, answers]);
 
+  useEffect(() => {
+    sound.setScene(mode === "play" ? "day" : "night");
+  }, [mode]);
+
   // ---------------------------------------------------------------- live events: gossip bubbles, whispers
   useEffect(() => {
     if (!g || mode !== "play") return;
@@ -133,8 +204,10 @@ export default function Game() {
           const shown = pairs.filter(([a, b]) => STANDS[a] && STANDS[b]).slice(0, 9);
           const fresh = shown.map(([a, b], i) => ({ id: `${events[0].seq}-${a}-${b}`, from: STANDS[a], to: STANDS[b], delay: i * 0.35 }));
           setBubbles((bs) => [...bs, ...fresh]);
+          shown.forEach(([a], i) => window.setTimeout(() => emote(a, "💬", 1600), i * 350));
           setTimeout(() => setBubbles((bs) => bs.filter((b) => !fresh.includes(b))), 2600 + fresh.length * 350 + 400);
         }
+        events.filter((e) => e.type === "mood_changed").forEach((e) => emote(String(e.villager), "😠", 4000));
         const steps = events.filter((e) => e.type === "detective_step");
         const last = steps[steps.length - 1];
         if (last) {
@@ -150,7 +223,7 @@ export default function Game() {
       }
     }, 1200);
     return () => clearInterval(timer);
-  }, [g, mode]);
+  }, [g, mode, emote]);
 
   // ---------------------------------------------------------------- walking and talking
   const headingRef = useRef<string | null>(null);
@@ -162,7 +235,6 @@ export default function Game() {
   }, []);
 
   const walkTo = (id: string) => {
-    setHint(false);
     setTalkingTo(null);
     const target = beside(id);
     headingRef.current = id;
@@ -177,6 +249,7 @@ export default function Game() {
   };
 
   const onVillager = (id: string) => {
+    sound.click();
     if (minds) {
       setMindOf(id);
       return;
@@ -190,6 +263,19 @@ export default function Game() {
     walkTo(f.villager);
   };
 
+  const onAnswer = (a: Answer, followed: boolean) => {
+    setAnswers((xs) => [...xs, a]);
+    setStatus(a.status);
+    setFollow(null);
+    setVersion((v) => v + 1);
+    if (pendingSource?.id === a.villager) setPendingSource(null);
+    if (a.contradictions_new.length) {
+      sound.sting();
+      emote(a.villager, "❗", 3500);
+    }
+    unlock(milestonesFor(a, { hub, followed }));
+  };
+
   const sendInspector = async () => {
     if (!g || inspector?.running) return;
     setInspector({ at: { x: 30, y: 470 }, running: true, result: null, open: true });
@@ -200,6 +286,7 @@ export default function Game() {
       const s = await api.status(g);
       setStatus(s);
       setVersion((v) => v + 1);
+      sound.chime();
     } catch (e) {
       setError(String(e));
       setInspector((ins) => ins && { ...ins, running: false });
@@ -207,6 +294,7 @@ export default function Game() {
   };
 
   const toggleMinds = async () => {
+    sound.whoosh();
     if (minds) {
       setMinds(null);
       setMindOf(null);
@@ -222,8 +310,35 @@ export default function Game() {
 
   const nextDay = async () => {
     if (!g) return;
-    setStatus(await api.newSession(g));
+    const s = await api.newSession(g);
+    setStatus(s);
+    setChapter(s.session);
   };
+
+  const openNotebook = () => {
+    sound.paper();
+    setNotebook({ open: true });
+  };
+
+  // ---------------------------------------------------------------- keys
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      if (e.key === "Escape") {
+        if (notebook.open) setNotebook({ open: false });
+        else if (accusing) setAccusing(false);
+        else if (mindOf) setMindOf(null);
+        else if (lens) setLens(false);
+        else if (talkingTo) { setTalkingTo(null); setFollow(null); }
+        return;
+      }
+      if (typing || mode !== "play") return;
+      if (e.key === "m" || e.key === "M") sound.toggle();
+      if ((e.key === "n" || e.key === "N") && !talkingTo) openNotebook();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // ---------------------------------------------------------------- render
   if (mode === "title" || !g || !status || !village) {
@@ -232,12 +347,16 @@ export default function Game() {
 
   const progress = Math.min(1, status.questions_asked / Math.max(1, status.questions_asked + status.questions_left));
   const sky = skyAt(progress);
-  const hub = village.gossip_hubs[0]?.id;
-  const villagers = Object.keys(STANDS).map((id) => ({
+  const obj = objective(answers, unlocked, hub, names, pendingSource);
+  const villagers: Actor[] = Object.keys(STANDS).map((id) => ({
     id, name: names[id] ?? id, at: STANDS[id], talking: talkingTo === id,
-    facing: (talkingTo === id && player.x < STANDS[id].x ? -1 : 1) as 1 | -1,
+    thinking: talkingTo === id && thinking,
+    marker: !talkingTo && !minds && obj.targets.includes(id),
+    emote: emotes[id],
+    facing: (talkingTo === id ? (player.x < STANDS[id].x ? -1 : 1) : glance[id] ?? 1) as 1 | -1,
   }));
   const mindCounts = minds && Object.fromEntries(Object.entries(minds).map(([id, m]) => [id, { beliefs: m.claims.length, heard: m.heard, mutated: m.mutated }]));
+  const focus = talkingTo ? { x: (player.x + STANDS[talkingTo].x) / 2, y: STANDS[talkingTo].y } : null;
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
@@ -246,21 +365,29 @@ export default function Game() {
           inspector={inspector?.at ?? null}
           onVillager={onVillager}
           onArrive={arrive}
+          focus={mode === "play" ? focus : null}
           interactive={mode === "play" && !accusing} />
       </div>
 
       {mode === "play" && (
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute left-3 top-3 flex flex-col gap-2">
-            <Watch status={status} />
-            <div className="pointer-events-auto flex gap-2">
-              <button className="wood text-[13px]" onClick={() => setMode("title")}>☰ Menu</button>
-              {status.questions_left === 0 && <button className="wood text-[13px]" onClick={nextDay}>☾ Return tomorrow</button>}
-            </div>
-          </div>
+          <AnimatePresence>
+            {!talkingTo && (
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
+                className="absolute left-3 top-3 flex flex-col gap-2">
+                <Watch status={status} />
+                <QuestTracker obj={obj} count={unlocked.size} />
+                <div className="pointer-events-auto flex gap-2">
+                  <button className="wood text-[13px]" onClick={() => setMode("title")}>☰ Menu</button>
+                  {status.questions_left === 0 && <button className="wood text-[13px]" onClick={nextDay}>☾ Return tomorrow</button>}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="absolute right-3 top-3 max-w-[70vw]">
-            <ActionBar onNotebook={() => setNotebook({ open: true })} onInspector={() => (inspector?.running ? setInspector({ ...inspector, open: true }) : sendInspector())}
-              onMinds={toggleMinds} onLens={() => setLens(!lens)} onAccuse={() => setAccusing(true)}
+            <ActionBar onNotebook={openNotebook} onInspector={() => (inspector?.running ? setInspector({ ...inspector, open: true }) : sendInspector())}
+              onMinds={toggleMinds} onLens={() => { sound.click(); setLens(!lens); }} onAccuse={() => { sound.click(); setAccusing(true); }}
+              onSound={() => sound.toggle()} muted={muted}
               minds={!!minds} lens={lens} inspectorBusy={!!inspector?.running} />
           </div>
           {!talkingTo && (
@@ -268,18 +395,11 @@ export default function Game() {
               <Whispers feed={feed} names={names} />
             </div>
           )}
-          <AnimatePresence>
-            {hint && !talkingTo && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                className="parchment pointer-events-auto absolute left-1/2 top-24 w-[min(520px,calc(100vw-24px))] -translate-x-1/2 p-4 text-center">
-                <p className="font-display text-lg">Click a villager to walk over and question them.</p>
-                <p className="mt-1 text-[13px] text-[#6b5040]">
-                  Village talk (PageRank over who knows whom) says <b>{names[hub ?? ""]}</b> hears everything. Start there.
-                </p>
-                <button className="wood mt-2" onClick={() => setHint(false)}>Understood</button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {!talkingTo && !minds && (
+            <div className="absolute bottom-3 right-3 hidden rounded-lg bg-[#1c1714]/70 px-3 py-1.5 text-[11px] text-[#cbb89a] backdrop-blur md:block">
+              Drag to look around · scroll to zoom · <b>N</b> notebook · <b>M</b> sound
+            </div>
+          )}
           {minds && (
             <div className="parchment pointer-events-auto absolute bottom-3 left-1/2 w-[min(560px,calc(100vw-24px))] -translate-x-1/2 p-3 text-center text-[13px]">
               <b>Mind's eye:</b> each villager's own memory graph. Click someone to read their mind. (Demo view: the player never sees this.)
@@ -292,11 +412,11 @@ export default function Game() {
         {talkingTo && mode === "play" && (
           <Dialogue key={talkingTo} g={g} villager={talkingTo} name={names[talkingTo]} role={roles[talkingTo]}
             questionsLeft={status.questions_left} statements={answers} pending={follow}
-            onAnswer={(a) => {
-              setAnswers((xs) => [...xs, a]);
-              setStatus(a.status);
-              setFollow(null);
-              setVersion((v) => v + 1);
+            onAnswer={onAnswer}
+            onThinking={setThinking}
+            onSource={(s) => {
+              unlock(["told"]);
+              if (s.source && s.source_name) setPendingSource({ id: s.source, name: s.source_name });
             }}
             onFollow={onFollow}
             onLeave={() => { setTalkingTo(null); setFollow(null); }} />
@@ -306,7 +426,7 @@ export default function Game() {
       <AnimatePresence>
         {notebook.open && (
           <Notebook g={g} answers={answers} names={names} version={version} focusClaim={notebook.claim}
-            onClose={() => setNotebook({ open: false })} />
+            onClose={() => { sound.paper(); setNotebook({ open: false }); }} />
         )}
       </AnimatePresence>
 
@@ -344,18 +464,31 @@ export default function Game() {
         )}
       </AnimatePresence>
 
-      {lens && <div className="absolute inset-0 z-30 pointer-events-none"><div className="pointer-events-auto"><QueryMonitor onClose={() => setLens(false)} /></div></div>}
+      {lens && <div className="pointer-events-none absolute inset-0 z-30"><div className="pointer-events-auto"><QueryMonitor onClose={() => setLens(false)} /></div></div>}
 
       <AnimatePresence>
         {accusing && (
           <Accusation g={g} answers={answers} names={names}
-            onVerdict={() => { setAccusing(false); setMode("flashback"); }}
+            onVerdict={(v: Verdict) => {
+              if (v.correct) unlock(["closed"]);
+              setAccusing(false);
+              sound.whoosh();
+              setMode("flashback");
+            }}
             onClose={() => setAccusing(false)} />
         )}
       </AnimatePresence>
 
-      {mode === "briefing" && <Briefing onStart={() => setMode("play")} />}
-      {mode === "flashback" && <Flashback g={g} onDone={() => setMode("play")} />}
+      {mode === "briefing" && <Briefing onStart={() => { sound.whoosh(); setMode("play"); setChapter(status.session); }} />}
+      {mode === "flashback" && (
+        <motion.div className="absolute inset-0 z-50" initial={{ clipPath: "circle(0% at 50% 50%)" }}
+          animate={{ clipPath: "circle(150% at 50% 50%)" }} transition={{ duration: 1.4, ease: [0.6, 0, 0.3, 1] }}>
+          <Flashback g={g} onDone={() => setMode("play")} />
+        </motion.div>
+      )}
+      {chapter !== null && mode === "play" && <ChapterCard day={chapter} onDone={() => setChapter(null)} />}
+
+      <MilestoneBanner m={banner} />
 
       {error && mode === "play" && (
         <div className="pointer-events-auto absolute left-1/2 top-3 z-50 -translate-x-1/2 rounded-lg bg-[#9a2f1f] px-4 py-2 text-sm text-white shadow-xl">

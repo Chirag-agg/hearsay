@@ -312,6 +312,64 @@ function Signpost({ place }: { place: string }) {
   );
 }
 
+/** Small things that make the fields feel lived in: grass, wildflowers, fences, a haystack, a stall. */
+const Decor = memo(function Decor({ night }: { night: boolean }) {
+  const tufts = Array.from({ length: 90 }, (_, i) => {
+    const x = (i * 197 + (i % 7) * 31) % W;
+    const y = 360 + ((i * 131) % 520);
+    return { x, y, i };
+  }).filter(({ x, y }) => !Object.values(PLACES).some((p) => Math.hypot(p.x - x, p.y - y) < 120));
+  const grass = night ? "#3d5236" : "#6f9a48";
+  const flowers = ["#f3eee2", "#e8c24a", "#d98aa0", "#8a6b9e"];
+  return (
+    <g>
+      {tufts.map(({ x, y, i }) => (
+        <g key={i} transform={`translate(${x} ${y})`}>
+          <path d="M-5 0 q1 -9 3 -11 M0 0 q0 -10 1 -13 M4 0 q0 -8 -2 -10" stroke={grass} strokeWidth="1.6" fill="none" />
+          {i % 3 === 0 && !night && <circle cx="2" cy="-12" r="2.2" fill={flowers[i % 4]} />}
+        </g>
+      ))}
+      {/* cloud shadows drifting over the fields */}
+      {!night && [0, 1].map((k) => (
+        <ellipse key={k} className="cloud-shadow" style={{ animationDelay: `${k * -70}s` }} cx="0" cy={520 + k * 220} rx="180" ry="45" fill="#2a3a20" opacity="0.07" />
+      ))}
+      {/* fences */}
+      <g stroke="#7a5230" strokeWidth="3" strokeLinecap="round">
+        {[[180, 560, 8], [1040, 300, 6], [560, 880, 7]].map(([x0, y0, n], k) => (
+          <g key={k}>
+            <path d={`M${x0} ${y0} h${n * 22}`} />
+            <path d={`M${x0} ${y0 + 9} h${n * 22}`} />
+            {Array.from({ length: n + 1 }, (_, i) => <path key={i} d={`M${x0 + i * 22} ${y0 - 8} v22`} />)}
+          </g>
+        ))}
+      </g>
+      {/* haystack and barrels by the mill */}
+      <g transform="translate(1300 700)">
+        <ellipse cx="0" cy="2" rx="34" ry="8" fill="#000" opacity="0.15" />
+        <path d="M-32 0 Q-30 -40 0 -46 Q30 -40 32 0 Z" fill="#d9b45a" />
+        <path d="M-20 -30 q10 -6 20 0 M-24 -14 q12 -6 24 0 M0 -20 q10 -6 22 0" stroke="#b8923e" strokeWidth="2" fill="none" />
+      </g>
+      {/* a market stall on the square */}
+      <g transform="translate(905 455)">
+        <rect x="-26" y="-34" width="4" height="34" fill="#5a3a22" />
+        <rect x="22" y="-34" width="4" height="34" fill="#5a3a22" />
+        <path d="M-32 -34 L32 -34 L28 -48 L-28 -48 Z" fill="#c2412d" />
+        <path d="M-32 -34 l8 6 l8 -6 l8 6 l8 -6 l8 6 l8 -6 l8 6 l8 -6" fill="#f3eee2" />
+        <rect x="-26" y="-14" width="52" height="14" fill="#8a6440" />
+        {[-16, -4, 8, 18].map((x, i) => <circle key={x} cx={x} cy="-17" r="4.5" fill={["#c2412d", "#e8a33d", "#7fae5a", "#d9822b"][i]} />)}
+      </g>
+      {/* lamp posts around the square */}
+      {[[600, 520], [925, 525]].map(([x, y]) => (
+        <g key={x} transform={`translate(${x} ${y})`}>
+          <rect x="-2" y="-70" width="4" height="70" fill="#2e2a26" />
+          <rect x="-7" y="-82" width="14" height="13" rx="3" fill={night ? "#ffd27a" : "#cbbf9d"} stroke="#2e2a26" strokeWidth="2" />
+          {night && <circle cx="0" cy="-76" r="26" fill="#ffd27a" opacity="0.16" className="flicker" />}
+        </g>
+      ))}
+    </g>
+  );
+});
+
 export const World = memo(function World({ sky }: { sky: Sky }) {
   const night = sky.night;
   return (
@@ -385,6 +443,7 @@ export const World = memo(function World({ sky }: { sky: Sky }) {
         [560, 820, 1, 0], [640, 650, 0.85, 3], [990, 600, 0.95, 2], [1530, 300, 1, 1], [260, 860, 1.1, 3], [1000, 880, 1, 0],
         [1180, 420, 0.9, 2], [80, 560, 1.15, 1]].map(([x, y, s, t], i) => <Tree key={i} x={x} y={y} s={s} tone={t} />)}
 
+      <Decor night={night} />
       <Manor night={night} />
       <Tavern night={night} />
       <Smithy night={night} />

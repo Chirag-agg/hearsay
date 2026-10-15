@@ -4,6 +4,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { api, type Answer, type Chip, type Source } from "../api";
+import { sound } from "./audio";
 import { Portrait } from "./characters";
 
 const GREETING: Record<string, string> = {
@@ -40,7 +41,10 @@ function Typewriter({ text, onDone }: { text: string; onDone: () => void }) {
   useEffect(() => {
     setN(0);
     done.current = false;
-    const t = setInterval(() => setN((k) => Math.min(k + 2, text.length)), 24);
+    const t = setInterval(() => setN((k) => {
+      if (k < text.length && k % 6 === 0) sound.tick();
+      return Math.min(k + 2, text.length);
+    }), 24);
     return () => clearInterval(t);
   }, [text]);
   useEffect(() => {
@@ -57,7 +61,7 @@ function Typewriter({ text, onDone }: { text: string; onDone: () => void }) {
 }
 
 export default function Dialogue({
-  g, villager, name, role, questionsLeft, statements, pending, onAnswer, onFollow, onLeave,
+  g, villager, name, role, questionsLeft, statements, pending, onAnswer, onFollow, onLeave, onThinking, onSource,
 }: {
   g: string;
   villager: string;
@@ -66,9 +70,11 @@ export default function Dialogue({
   questionsLeft: number;
   statements: Answer[];
   pending?: Follow | null;
-  onAnswer: (a: Answer) => void;
+  onAnswer: (a: Answer, followed: boolean) => void;
   onFollow: (f: Follow) => void;
   onLeave: () => void;
+  onThinking?: (thinking: boolean) => void;
+  onSource?: (s: Source) => void;
 }) {
   const [line, setLine] = useState(GREETING[villager] ?? "Yes?");
   const [typing, setTyping] = useState(true);
@@ -88,6 +94,8 @@ export default function Dialogue({
   const ask = async (q: string) => {
     if (!q.trim() || busy) return;
     setBusy(true);
+    onThinking?.(true);
+    sound.click();
     setError(null);
     setSource(null);
     setLine("…");
@@ -99,12 +107,13 @@ export default function Dialogue({
       setQuestion("");
       setCites([]);
       setAbout(null);
-      onAnswer(a);
+      onAnswer(a, !!about);
     } catch (e) {
       setError(String(e).replace(/^Error: /, ""));
       setLine("…");
     } finally {
       setBusy(false);
+      onThinking?.(false);
     }
   };
 
@@ -114,10 +123,22 @@ export default function Dialogue({
       setSource({ chip, s });
       setLine(s.dialogue);
       setTyping(true);
+      onSource?.(s);
     } catch (e) {
       setError(String(e));
     }
   };
+
+  const choices = about ? ["Who told you about that, and what exactly did you hear?"] : ASK[villager] ?? [];
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || busy) return;
+      const n = Number(e.key);
+      if (n >= 1 && n <= choices.length) ask(choices[n - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const mood = answer?.emotion === "guarded" || (answer?.withheld ?? 0) > 0 ? "guarded" : undefined;
   const out = questionsLeft <= 0;
@@ -194,15 +215,12 @@ export default function Dialogue({
               <button className="ml-1 font-bold" onClick={() => setAbout(null)}>×</button>
             </div>
           )}
-          {about ? (
-            <button className="choice" disabled={busy || out} onClick={() => ask("Who told you about that, and what exactly did you hear?")}>
-              “Who told you about that, and what exactly did you hear?”
+          {choices.map((q, i) => (
+            <button key={q} className="choice flex gap-2" disabled={busy || out} onClick={() => ask(q)}>
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#7a5230] text-[11px] font-bold text-[#f8eed6]">{i + 1}</span>
+              <span>“{q}”</span>
             </button>
-          ) : (
-            (ASK[villager] ?? []).map((q) => (
-              <button key={q} className="choice" disabled={busy || out} onClick={() => ask(q)}>“{q}”</button>
-            ))
-          )}
+          ))}
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
             <input value={question} onChange={(e) => setQuestion(e.target.value)} disabled={busy || out}
               placeholder={out ? "The day is over." : "Ask your own question…"}

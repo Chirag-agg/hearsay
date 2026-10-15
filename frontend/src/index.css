@@ -103,6 +103,31 @@ pre.cypher {
 .float { animation: float 2.8s ease-in-out infinite; }
 @keyframes float { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
 
+/* --- ambient life --- */
+.figure { filter: drop-shadow(0 0 0.7px #241812) drop-shadow(0 0 0.5px #241812); }
+.cloud-shadow { animation: cloudShadow 140s linear infinite; }
+@keyframes cloudShadow { from { transform: translateX(-300px) } to { transform: translateX(1900px) } }
+.flock { animation-name: flock; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes flock { from { transform: translate(-150px, 40px) } to { transform: translate(1750px, -30px) } }
+.flap { animation: flap 0.5s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes flap { from { transform: scaleY(1) } to { transform: scaleY(-0.6) } }
+.leaf { animation-name: leaf; animation-timing-function: linear; animation-iteration-count: infinite; }
+@keyframes leaf {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0 }
+  10% { opacity: 0.9 }
+  50% { transform: translate(-120px, 480px) rotate(360deg) }
+  90% { opacity: 0.8 }
+  100% { transform: translate(-60px, 980px) rotate(720deg); opacity: 0 }
+}
+.firefly { animation-name: firefly; animation-timing-function: ease-in-out; animation-iteration-count: infinite; filter: drop-shadow(0 0 4px #ffe98a); }
+@keyframes firefly { 0%, 100% { transform: translate(0, 0); opacity: 0.1 } 30% { opacity: 1 } 50% { transform: translate(14px, -18px); opacity: 0.8 } 80% { transform: translate(-8px, -6px); opacity: 0.2 } }
+.dots { animation: dots 0.9s ease-in-out infinite; }
+@keyframes dots { 0%, 100% { transform: translateY(0); opacity: 0.4 } 50% { transform: translateY(-3px); opacity: 1 } }
+.pop { animation: pop 0.45s cubic-bezier(.2, 1.6, .4, 1) both; transform-box: fill-box; transform-origin: center; }
+@keyframes pop { from { transform: scale(0) } to { transform: scale(1) } }
+.bounce { animation: bounce 1.1s ease-in-out infinite; }
+@keyframes bounce { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+
 /* --- UI motion --- */
 .caret::after { content: "▍"; animation: caret 0.8s steps(1) infinite; margin-left: 2px; color: #7a5230; }
 @keyframes caret { 50% { opacity: 0 } }

@@ -74,12 +74,14 @@ function describe(e: GameEvent, names: Record<string, string>): string {
 
 const first = (n?: string) => (n ?? "").replace(/^(Father|Lady|Dr\.|Constable) /, "").split(" ")[0];
 
-export function ActionBar({ onNotebook, onInspector, onMinds, onLens, onAccuse, minds, lens, inspectorBusy }: {
+export function ActionBar({ onNotebook, onInspector, onMinds, onLens, onAccuse, onSound, muted, minds, lens, inspectorBusy }: {
   onNotebook: () => void;
   onInspector: () => void;
   onMinds: () => void;
   onLens: () => void;
   onAccuse: () => void;
+  onSound: () => void;
+  muted: boolean;
   minds: boolean;
   lens: boolean;
   inspectorBusy: boolean;
@@ -93,6 +95,7 @@ export function ActionBar({ onNotebook, onInspector, onMinds, onLens, onAccuse, 
       <button className={`wood ${minds ? "wood-on" : ""}`} onClick={onMinds} title="See every villager's memory graph">👁 Mind's eye</button>
       <button className={`wood ${lens ? "wood-on" : ""}`} onClick={onLens} title="Every FalkorDB query, live">⌗ Graph lens</button>
       <button className="wood" onClick={onAccuse} title="Name the killer">⚖ Accuse</button>
+      <button className="wood" onClick={onSound} title="Sound on or off (M)">{muted ? "🔇" : "🔊"}</button>
     </div>
   );
 }

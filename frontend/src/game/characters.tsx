@@ -161,7 +161,7 @@ export function Figure({ look, walking = false, talking = false, facing = 1 }: {
   const ex = new Set(look.extras ?? []);
   const torso = `M${-11 * w} -70 Q${-13 * w} -50 ${-12 * w} -32 L${12 * w} -32 Q${13 * w} -50 ${11 * w} -70 Q0 -74 ${-11 * w} -70 Z`;
   return (
-    <g className={walking ? "walking" : "idle"} transform={`scale(${(look.scale ?? 1) * facing} ${look.scale ?? 1})`}>
+    <g className={`figure ${walking ? "walking" : "idle"}`} transform={`scale(${(look.scale ?? 1) * facing} ${look.scale ?? 1})`}>
       <ellipse cx="0" cy="0" rx={16 * w} ry="4.5" fill="#000" opacity="0.28" />
       <g className="breathe">
         {/* legs or skirt */}
