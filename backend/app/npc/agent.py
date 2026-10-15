@@ -124,8 +124,14 @@ class Villager:
         answer, mode, attempts = None, "template", []
         if not replay and claims:
             for strict in (False, True):
-                draft = llm.render(self.me, claims, memory, question, trust, strict=strict)
+                try:
+                    draft = llm.render(self.me, claims, memory, question, trust, strict=strict)
+                except Exception as exc:  # network, quota, bad JSON: the template answer still works
+                    attempts.append({"dialogue": None, "problems": [f"LLM error: {exc}"]})
+                    break
                 problems = guardrail(draft["dialogue"], draft["claim_ids_used"], by_id, self.vocabulary, self.me["name"])
+                if not draft["dialogue"] or not draft["claim_ids_used"]:
+                    problems.append("empty dialogue or no claims cited")
                 attempts.append({"dialogue": draft["dialogue"], "problems": problems})
                 if not problems:
                     answer, mode = draft, "llm"

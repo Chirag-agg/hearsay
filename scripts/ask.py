@@ -46,6 +46,7 @@ def main() -> None:
     parser.add_argument("--replay", action="store_true", help="force REPLAY=1 (templates, no LLM)")
     parser.add_argument("--show", action="store_true", help="print the parse, queries and claims")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # LLM dialogue has dashes and curly quotes
     if args.replay:
         os.environ["REPLAY"] = "1"
 

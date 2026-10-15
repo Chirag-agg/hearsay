@@ -28,6 +28,14 @@ python scripts/smoke_cypher.py
 
 `seed.py` rebuilds the 13 `tpl_*` template graphs from the demo case; run it again after any change to the JSON. `smoke_cypher.py` runs every query on a small fixture graph, then checks the answers the demo depends on against the templates, and must pass before any query is wired into code. FalkorDB Browser is at http://localhost:3000.
 
+Question a villager in the terminal (reads the templates, writes nothing):
+
+```bash
+python scripts/ask.py aldric "Was Elena at prayer all evening?"
+```
+
+`REPLAY=1` (or no `LLM_*` settings) uses the keyword parser and template sentences, so answers never vary; otherwise the LLM words the answer and the guardrail checks every name, place and time against the claims it cites, retrying once and then falling back to the template. `python scripts/ask.py aldric` is interactive, and `/source <claim_id>` asks "who told you?". `scripts/check_agent.py` checks the demo's answers.
+
 Run the API (from `backend/`): `uvicorn app.main:app --reload`, then:
 
 | Route | What it does |
@@ -75,6 +83,7 @@ Every query the product depends on lives in [backend/app/queries](backend/app/qu
 | --- | --- |
 | `q01_recall` | What does this villager believe about a person in a time window? |
 | `q01b_recall_place` | What does this villager believe happened at a place in a time window? |
+| `q01c_claim_details` | Everything needed to put the chosen claims into words |
 | `q02_next_gossip` | Which claims will a villager retell next? |
 | `q03_who_told_me` | Who did this villager hear a claim from? |
 | `q04_gossip_hubs` | Who hears the most gossip? (PageRank) |
