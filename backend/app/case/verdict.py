@@ -13,6 +13,10 @@ from app.engine.gossip import hhmm
 
 MOTIVE_WORDS = re.compile(r"\b(debt|owe\w*|crowns?|300|shop|money|loan|lend\w*|pay\w*|friday)\b", re.I)
 MOTIVE_PREDS = ("OWES", "THREATENED", "ARGUED_WITH")
+REACTION_TEXT = {
+    "rule_elena_frame_jonas": "heard you asked about the hammer, and started saying she saw Jonas carry it toward the Mill at 20:45",
+    "rule_elena_change_story": "heard you asked Father Aldric when she left the Chapel, and changed her story to going home at 21:00",
+}
 
 
 def _ro(graph: str, cypher: str, params: dict | None = None, label: str = "verdict") -> list[dict]:
@@ -94,6 +98,8 @@ def reveal(g: str) -> dict:
         {"root": "c_pip_saw_woman"})
     totals = _ro(graphs.world, """MATCH ()-[h:GOSSIPED]->()
         RETURN count(h) AS hops, sum(CASE WHEN h.mutated_field IS NULL THEN 0 ELSE 1 END) AS mutated""")[0]
+    reacted = _ro(graphs.world, "MATCH (r:Reaction) RETURN r.tick AS tick, r.villager AS villager, r.rule AS rule "
+                                "ORDER BY tick")
     lies = _ro(graphs.case, """MATCH (x:Contradiction) OPTIONAL MATCH (x)-[:IMPLICATES]->(p:Person)
         RETURN x.kind AS kind, x.detail AS detail, p.name AS liar ORDER BY x.tick""")
     return {
@@ -106,6 +112,8 @@ def reveal(g: str) -> dict:
                             "changed": h["changed"], "before": h["before"], "after": h["after"]} for h in hops],
         "gossip": totals,
         "lies_caught": lies,
+        "killer_reacted": [{"tick": r["tick"], "villager": names.get(r["villager"], r["villager"]),
+                            "what": REACTION_TEXT.get(r["rule"], r["rule"])} for r in reacted],
     }
 
 

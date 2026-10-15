@@ -31,6 +31,16 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def seed_if_missing() -> None:
+    """A fresh FalkorDB (new Cloud instance, new Docker volume) gets its templates on first start."""
+    from app import seed
+
+    if os.getenv("AUTO_SEED", "1") == "1" and not seed.templates_ready():
+        logging.getLogger("hearsay").info("tpl_* graphs missing: seeding (this takes ~1 s locally, ~45 s on Cloud)")
+        seed.seed(verbose=False)
+
+
 def _call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)

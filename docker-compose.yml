@@ -13,14 +13,25 @@ services:
       - path: .env
         required: false
     environment:
+      # Inside compose the backend talks to the falkordb service, whatever .env says for local runs.
       FALKORDB_HOST: falkordb
       FALKORDB_PORT: "6379"
+      FALKORDB_USERNAME: ""
+      FALKORDB_PASSWORD: ""
     ports:
       - "8000:8000"
     depends_on:
       - falkordb
 
-  # frontend: added once the Vite app exists in ./frontend
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   falkordb-data:

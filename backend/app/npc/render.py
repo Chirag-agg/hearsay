@@ -31,8 +31,11 @@ def _clause(c: dict, self_id: str, pronouns: dict[str, str]) -> str:
     t = when(c)
     t = f" {t}" if t else ""
     pred = c["pred"]
+    if pred == "ASKED":  # gossip about the investigation itself
+        return c.get("note") or "the detective has been asking questions"
     if pred == "WAS_AT":
-        return f"{who} was{at}{t}"
+        carrying = f" with {c['object']}" if c.get("object") else ""
+        return f"{who} was{at}{carrying}{t}"
     if pred == "LEFT":
         toward = f", heading for the {c['toward']}" if c.get("toward") else ""
         return f"{who} left the {c['place']}{t}{toward}" if c.get("place") else f"{who} left{t}{toward}"
@@ -47,7 +50,7 @@ def _clause(c: dict, self_id: str, pronouns: dict[str, str]) -> str:
 
 def sentence(c: dict, self_id: str, pronouns: dict[str, str]) -> str:
     clause = _clause(c, self_id, pronouns)
-    if c.get("note"):
+    if c.get("note") and c["pred"] != "ASKED":
         clause += f" ({c['note'].rstrip('.')})"  # "found dead", "time of death, from examining the body"
     if c["origin"] == "heard":
         source = c.get("heard_from") or "someone"

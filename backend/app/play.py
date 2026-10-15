@@ -10,7 +10,7 @@ import re
 
 from app import db, events, games
 from app.case import checks, writer
-from app.engine import gossip
+from app.engine import gossip, reactions
 from app.engine.gossip import hhmm
 from app.npc.agent import Villager
 from app.npc.render import sentence
@@ -115,7 +115,13 @@ def ask(g: str, villager_id: str, question: str, *, cite_statement_ids: list[str
     trust = _remember(graphs.npc(villager_id), player_id, session, tick, question, answer["claim_ids_used"], accusatory)
     written = writer.write_statement(graphs, villager_id, question, answer, tick=tick, session=session, seed=seed)
     found = checks.run_checks(graphs, tick)
+    reactions.record_question(graphs, villager_id, question, answer["parsed"], tick=tick, seed=seed,
+                              now=1920 + before["questions_asked"] * 30)
     hops = gossip.run_ticks(graphs, 1)
+    fired = reactions.react(graphs)  # secret: only the reveal and the God view show it
+    if fired:
+        db.create_nodes(graphs.world, "Reaction", [{"tick": tick, "villager": f["villager"], "rule": f["rule"]}
+                                                   for f in fired])
     after = games.status(g)
 
     out_events = [{"type": "contradiction_found", "kind": c["kind"], "detail": c["detail"], "key": c["key"],

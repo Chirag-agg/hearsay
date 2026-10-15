@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 os.environ["REPLAY"] = "1"
+os.environ.setdefault("KILLER_REACTS", "0")  # the core solving path; check_killer.py covers the stretch rules
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app import db, games, play  # noqa: E402

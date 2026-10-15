@@ -399,6 +399,8 @@ CREATE INDEX FOR (x:Contradiction) ON (x.key)
 
 **A third rule, found by `smoke_cypher.py` on FalkorDB 4.x.** When two comma-separated patterns are filtered by a `WHERE` that compares them, and a later `MATCH` reuses their nodes, FalkorDB drops the pairing inside each pattern: Q6b returned Bess's statement joined to Aldric's claim. A `WITH` straight after the `WHERE` fixes it, so Q6a and Q6b have one. Any new query with that shape needs one too, plus a smoke-test case.
 
+**Two more, found while building the case writer.** An inline property map can't refer to another matched node: `MATCH (c1:Claim {id: x.claim_1})` fails with "Variable x not found" (an `UNWIND` variable works). Use `WHERE c1.id = x.claim_1` with a `WITH` barrier. And after an `OPTIONAL MATCH` plus aggregation, a later `OPTIONAL MATCH` anchored on the aggregated node that filters its other end (`{id: $sighting}` or `WHERE d.id = $sighting`) matches nothing, which zeroed Q14's fit term. Q14 collects the descriptions a person fits and tests membership instead, and the smoke test checks it.
+
 ### Villager memory graphs
 
 **Q1. What do I believe about this person in this window?** Used by the villager agent for every whereabouts question.
@@ -857,3 +859,12 @@ Fourth round, from building `hollowmere.json`:
 25. **Rules have one switch:** `w02_activate_rule` sets `Rule.active` and raises the dormant lie claims together.
 26. **The data model gains** `Gate` (Lady Wren's trust gate), the villager's starting trust toward the player on `Self`, and the `Rule` fields the liars need.
 27. **Q1 and Q1b drop claims an active rule hides, before `LIMIT`,** and break ties on `claim_id`. Elena's changed-story rule now hides her true whereabouts and her abandoned cover story.
+
+Fifth round, from building the whole game:
+
+28. **Secrets stay secret in interrogation.** Q1 and Q1b never return a `private` claim unless a `Gate` guards it, so Elena can't confess to the hammer when asked about 17:30, and the gate decides about Lady Wren's affair. An active rule also covers what a liar has heard about herself next to its window.
+29. **The pre-game ticks run in `seed.py`.** The same seed gives the same morning, so templates carry the 12 ticks and `POST /games` only copies graphs. `seeded_id` hashes the seed, not the game id, so two games from one seed are identical (`check_engine.py`).
+30. **Following a rumor asks the source about that rumor.** `about_claim_id` maps the clicked case claim to its `root_id` on the backend and runs Q1d on the source villager's graph. Each hop of the trace costs a question.
+31. **The case board records the claims an answer cites.** With templates every retrieved claim is cited; with the LLM, an answer that leaves a claim out leaves it off the board, so Q14 scores can be lower than the REPLAY numbers.
+32. **The detective connects over MCP in-process by default** (`mcp.Client(server)`), so its queries reach the live monitor; `DETECTIVE_TRANSPORT=stdio` runs the server as a subprocess. If the LLM stalls or hits rate limits, a scripted detective finishes from the board as it stands.
+33. **FalkorDB Cloud's 100 MB tier fits about five live games** (about 14 MB each, templates about 21 MB); `MAX_GAMES` deletes the least recently used game first.
