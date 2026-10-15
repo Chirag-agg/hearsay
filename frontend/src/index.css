@@ -103,6 +103,8 @@ pre.cypher {
 .flock { animation-name: flock; animation-timing-function: linear; animation-iteration-count: infinite; }
 @keyframes flock { from { transform: translate(-150px, 40px) } to { transform: translate(1750px, -30px) } }
 .flap { animation: flap 0.5s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+.wing { animation: wing 0.16s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes wing { from { transform: scaleX(1) } to { transform: scaleX(0.25) } }
 @keyframes flap { from { transform: scaleY(1) } to { transform: scaleY(-0.6) } }
 .leaf { animation-name: leaf; animation-timing-function: linear; animation-iteration-count: infinite; }
 @keyframes leaf {

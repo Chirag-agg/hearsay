@@ -2,6 +2,7 @@
 // "village whispers" ticker fed by live events.
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import type { GameEvent, Status } from "../api";
 
 export function Watch({ status }: { status: Status }) {
@@ -38,7 +39,17 @@ export function Watch({ status }: { status: Status }) {
 }
 
 export function Whispers({ feed, names }: { feed: GameEvent[]; names: Record<string, string> }) {
-  const lines = feed.filter((e) => e.type !== "clock_tick" && e.type !== "detective_step").slice(0, 4);
+  // Each whisper shows for a few seconds, two at most, so they don't pile up over the village.
+  const seen = useRef(new Map<number, number>());
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+  feed.forEach((e) => { if (!seen.current.has(e.seq)) seen.current.set(e.seq, Date.now()); });
+  const lasts = (e: GameEvent) => (e.type === "contradiction_found" || e.type === "detective_done" ? 14000 : 7000);
+  const lines = feed.filter((e) => e.type !== "clock_tick" && e.type !== "detective_step")
+    .filter((e) => now - (seen.current.get(e.seq) ?? now) < lasts(e)).slice(0, 2);
   return (
     <div className="pointer-events-none flex w-[min(380px,calc(100vw-24px))] flex-col gap-1.5">
       <AnimatePresence initial={false}>

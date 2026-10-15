@@ -70,9 +70,10 @@ Click a villager and your detective walks over; the camera closes in and they an
 | Control | Does |
 | --- | --- |
 | Click a villager | Walk over and question them |
-| Drag · scroll | Look around · zoom |
+| Drag, arrows or WASD · two-finger scroll | Look around |
+| Mouse wheel, pinch, + / −, 0 | Zoom in and out, or see the whole village |
 | 1–4 | Pick a question in a conversation |
-| N | Notebook: evidence, red-string contradictions, wanted posters, rumor traces, the raw graph |
+| N | Notebook: evidence, red-string contradictions, wanted posters, rumor traces, and who told whom |
 | M | Sound on or off (all synthesized; no audio files) |
 | Esc | Close a panel or leave a conversation |
 
@@ -143,7 +144,8 @@ backend/
 frontend/src/          village map, interrogation, case board, detective, accusation, God view
 frontend/public/sprites/  the cast's LPC walk sheets and their CREDITS.md
 frontend/public/tiles/    the LPC village map, the windmill and their CREDITS.md
-scripts/               seed, ask, replay_demo, run_detective, build_sprites, build_village and the checks
+frontend/public/life/     horses, cart, boat, cows, sheep and chickens for the village's passing life, with CREDITS.md
+scripts/               seed, ask, replay_demo, run_detective, build_sprites, build_village, build_life and the checks
 ```
 
 ## Cypher queries
@@ -509,3 +511,8 @@ keeps each artist's tiles in their own folders, and the
 [cottage preview](https://opengameart.org/sites/default/files/preview_280.png). It writes the map, the
 windmill frames, `frontend/src/game/village.json` (where every place and villager is) and
 [frontend/public/tiles/CREDITS.md](frontend/public/tiles/CREDITS.md).
+
+The village's passing life (travellers, a horse and hay cart, boats, cows, sheep and chickens) uses
+bluecarrot16's "[LPC] Horses" and Daniel Eddeland's "LPC style farm animals" from OpenGameArt, built by
+`scripts/build_life.py`; the travellers are LPC characters from `scripts/sprites.json`. Credits are in
+[frontend/public/life/CREDITS.md](frontend/public/life/CREDITS.md).

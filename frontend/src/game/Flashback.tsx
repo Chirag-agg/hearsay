@@ -64,7 +64,7 @@ export default function Flashback({ g, onDone }: { g: string; onDone: () => void
   return (
     <div className="absolute inset-0 z-50 bg-black">
       <div className="absolute inset-0">
-        <Scene sky={skyAt(0, true)} villagers={[]} bubbles={onStory ? [] : rumorBubble} interactive={false}
+        <Scene sky={skyAt(0, true)} villagers={[]} bubbles={onStory ? [] : rumorBubble} interactive={false} life={false}
           walkers={onStory ? beat.walkers : rumorWalkers}
           extras={onStory && i === 5 ? <circle cx={PLACES.riverside.x - 40} cy={PLACES.riverside.y - 20} r="160" fill="#ffd27a" opacity="0.08" /> : null} />
       </div>

@@ -45,6 +45,28 @@
     "inspector": { "body": "male", "head": "heads_human_male_elderly", "skin": "light", "eyes": "gray",
       "layers": [["feet_shoes_basic", "black"], ["legs_formal", "gray"], ["torso_clothes_longsleeve", "white"],
                  ["torso_jacket_trench", "gray"], ["hair_plain", "gray"], ["beards_mustache", "gray"],
-                 ["hat_formal_bowler", "black"]] }
+                 ["hat_formal_bowler", "black"]] },
+
+    "_travellers": "Passers-by: they walk the roads and take no part in the case.",
+    "farmer": { "body": "male", "head": "heads_human_male", "skin": "amber", "eyes": "brown",
+      "layers": [["feet_boots_basic", "brown"], ["legs_pants", "walnut"], ["torso_clothes_longsleeve", "tan"],
+                 ["torso_aprons_overalls", "green"], ["hair_plain", "chestnut"], ["hat_cap_leather", "leather"]] },
+    "maid": { "body": "female", "head": "heads_human_female", "skin": "light", "eyes": "blue",
+      "layers": [["feet_shoes_basic", "brown"], ["legs_skirts_plain", "blue"], ["torso_clothes_blouse", "white"],
+                 ["torso_aprons_apron", "white"], ["hair_long", "blonde"]] },
+    "merchant": { "body": "male", "head": "heads_human_male_plump", "skin": "taupe", "eyes": "brown",
+      "layers": [["feet_shoes_basic", "black"], ["legs_formal", "maroon"], ["torso_clothes_longsleeve", "white"],
+                 ["torso_jacket_collared", "brown striped"], ["hair_plain", "dark_brown"], ["beards_beard", "dark_brown"],
+                 ["hat_formal_bowler", "brown"]] },
+    "pilgrim": { "body": "male", "head": "heads_human_male_elderly", "skin": "light", "eyes": "gray",
+      "layers": [["feet_boots_basic", "brown"], ["legs_pants", "brown"], ["torso_clothes_longsleeve", "brown"],
+                 ["beards_beard", "white"], ["cape_solid", "brown"], ["hat_hood_cloth", "brown"]] },
+    "washer": { "body": "female", "head": "heads_human_female", "skin": "olive", "eyes": "brown",
+      "layers": [["feet_shoes_basic", "black"], ["legs_skirt_straight", "forest"], ["torso_clothes_blouse_longsleeve", "blue"],
+                 ["torso_aprons_apron", "lavender"], ["hair_bangs_bun", "chestnut"]] },
+    "watchman": { "body": "male", "head": "heads_human_male", "skin": "light", "eyes": "blue",
+      "layers": [["feet_boots_basic", "black"], ["legs_formal", "gray"], ["torso_clothes_longsleeve", "red"],
+                 ["torso_jacket_collared", "maroon"], ["hair_plain", "black"], ["beards_mustache", "black"],
+                 ["hat_cap_leather", "red"]] }
   }
 }

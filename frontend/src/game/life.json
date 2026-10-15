@@ -1,0 +1,31 @@
+{
+  "horse": {
+    "frame": 128,
+    "frames": 4,
+    "feet": 128
+  },
+  "cow": {
+    "frame": 128,
+    "frames": 4,
+    "feet": 104
+  },
+  "sheep": {
+    "frame": 128,
+    "frames": 4,
+    "feet": 89
+  },
+  "chicken": {
+    "frame": 32,
+    "frames": 4,
+    "feet": 28
+  },
+  "cart": {
+    "frame": 64,
+    "frames": 1,
+    "feet": 58
+  },
+  "boat": {
+    "width": 123,
+    "height": 63
+  }
+}

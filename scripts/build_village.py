@@ -62,6 +62,10 @@ RIVER_HALF = 42
 MILL_FRAMES = 12  # Casper Nilsson's windmill: 12 frames of 224 x 320
 WHEAT = (40, 590, 200, 700)
 GARDEN = (40, 420, 118, 505)
+PASTURE = (790, 330, 960, 520)  # cows and sheep graze here
+YARD = (40, 515, 130, 575)  # the herbalist's chickens
+# Where smoke rises from each building, as fractions of its cut-out.
+CHIMNEYS = {"tavern": [(0.78, 0.08)], "smithy": [(0.2, 0.12)], "manor": [(0.18, 0.06), (0.82, 0.06)], "herbalist": [(0.86, 0.4)], "chapel": []}
 
 
 def road_curve(a: str, b: str, steps: int = 40) -> list[tuple[float, float]]:
@@ -360,9 +364,12 @@ def main() -> None:
 
     buildings = preview_buildings(args.preview, A)
     buildings["chapel"] = stone_chapel(args.kit)
+    chimneys = []
     for name, (img, (dx, dy)) in buildings.items():
         x, y = DOORS[name]
         put(img, x - dx, y - dy, base=y, block=14)
+        w_, h_ = img.size
+        chimneys += [(x - dx + w_ * fx, y - dy + h_ * fy) for fx, fy in CHIMNEYS.get(name, [])]
 
     # The windmill is animated in the frontend; keep its ground clear here.
     fw, fh = windmill.size[0] // MILL_FRAMES, windmill.size[1]
@@ -435,6 +442,10 @@ def main() -> None:
         "lamps": [w((x, y - 76)) for x, y in lamps],
         "windmill": {**w((mill_x, mill_y)), "frames": MILL_FRAMES, "width": round(fw * U), "height": round(fh * U)},
         "roads": [list(r) for r in ROADS],
+        "river": [w(p) for p in RIVER],
+        "chimneys": [w(p) for p in chimneys],
+        "pasture": [*w(PASTURE[:2]).values(), *w(PASTURE[2:]).values()],
+        "yard": [*w(YARD[:2]).values(), *w(YARD[2:]).values()],
     }
     META.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     (OUT / "CREDITS.md").write_text(CREDITS, encoding="utf-8")

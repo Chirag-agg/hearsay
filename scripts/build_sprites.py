@@ -121,6 +121,8 @@ def recolor(img, maps):
 def plan(lpc: Lpc, spec: dict) -> dict[str, list]:
     out = {}
     for who, c in spec["characters"].items():
+        if who.startswith("_"):  # notes
+            continue
         body = c["body"]
         stack = [("body", c["skin"]), (c["head"], [c["skin"], c.get("eyes", "brown")])]
         stack += [(item, color) for item, color in c["layers"]]

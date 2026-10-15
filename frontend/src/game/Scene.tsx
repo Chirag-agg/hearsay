@@ -5,6 +5,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "./audio";
+import Life from "./life";
 import { Sprite, type Dir, type Mood } from "./characters";
 import { H, Lighting, PLACES, W, World, type Sky } from "./world";
 
@@ -141,7 +142,7 @@ function Overhead({ v }: { v: Actor }) {
 
 export default function Scene({
   sky, villagers, hub, player, playerDir, inspector, bubbles, minds, onVillager, onArrive, onInspectorArrive, interactive = true, extras,
-  walkers, focus, labels = false,
+  walkers, focus, labels = false, life = true,
 }: {
   sky: Sky;
   villagers: Actor[];
@@ -159,6 +160,7 @@ export default function Scene({
   walkers?: WalkerSpec[];
   focus?: Point | null; // a conversation: the camera swoops in here
   labels?: boolean; // name plates under everyone
+  life?: boolean; // travellers, carts, boats and animals going about their day
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const sorted = useMemo(() => [...villagers].sort((a, b) => a.at.y - b.at.y), [villagers]);
@@ -168,10 +170,24 @@ export default function Scene({
   const drag = useRef<{ px: number; py: number; cam: Camera; moved: boolean } | null>(null);
   const suppressClick = useRef(false);
 
+  // The camera the player steers. Wheel, drag and keys move it instantly; following the player glides.
+  const freeRef = useRef(free);
+  const instant = useRef(false);
+  const steer = (c: Camera) => {
+    instant.current = true;
+    freeRef.current = clamp(c);
+    setFree(freeRef.current);
+  };
+
   // Follow the player when zoomed in.
   useEffect(() => {
     if (!player || focus) return;
-    setFree((c) => (c.w < W * 0.95 ? clamp({ ...c, x: player.x - c.w / 2, y: player.y - (c.w * H) / W / 2 - 40 }) : c));
+    instant.current = false;
+    setFree((c) => {
+      const next = c.w < W * 0.95 ? clamp({ ...c, x: player.x - c.w / 2, y: player.y - (c.w * H) / W / 2 - 40 }) : c;
+      freeRef.current = next;
+      return next;
+    });
   }, [player?.x, player?.y, focus]);
 
   const camera = useMemo(() => {
@@ -189,21 +205,56 @@ export default function Scene({
     return { s, ox: (r.width - c.w * s) / 2, oy: (r.height - h * s) / 2, r };
   };
 
+  /** Zoom by a factor, keeping the world point under (sx, sy) in screen pixels where it is (the centre by default). */
+  const zoomBy = (k: number, sx?: number, sy?: number) => {
+    const cur = freeRef.current;
+    const { s, ox, oy, r } = scaleOf(cur);
+    if (!r) return;
+    const wx = cur.x + ((sx ?? r.left + r.width / 2) - r.left - ox) / s;
+    const wy = cur.y + ((sy ?? r.top + r.height / 2) - r.top - oy) / s;
+    const w = Math.max(MIN_W, Math.min(W, cur.w * k));
+    const ratio = w / cur.w;
+    steer({ w, x: wx - (wx - cur.x) * ratio, y: wy - (wy - cur.y) * ratio });
+  };
+  const panBy = (dx: number, dy: number) => {
+    const cur = freeRef.current;
+    const { s } = scaleOf(cur);
+    steer({ ...cur, x: cur.x + dx / s, y: cur.y + dy / s });
+  };
+
+  // A mouse wheel zooms; a trackpad's two-finger scroll pans and its pinch (ctrl + wheel) zooms.
   const onWheel = (e: React.WheelEvent) => {
     if (!interactive || focus) return;
-    const { s, ox, oy, r } = scaleOf(free);
-    if (!r) return;
-    const wx = free.x + (e.clientX - r.left - ox) / s;
-    const wy = free.y + (e.clientY - r.top - oy) / s;
-    const k = Math.exp(e.deltaY * 0.0012);
-    const w = Math.max(MIN_W, Math.min(W, free.w * k));
-    const ratio = w / free.w;
-    setFree(clamp({ w, x: wx - (wx - free.x) * ratio, y: wy - (wy - free.y) * ratio }));
+    const trackpad = e.deltaMode === 0 && (e.deltaX !== 0 || Math.abs(e.deltaY) < 40);
+    if (e.ctrlKey) zoomBy(Math.exp(e.deltaY * 0.01), e.clientX, e.clientY);
+    else if (trackpad) panBy(e.deltaX, e.deltaY);
+    else zoomBy(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY);
   };
+
+  // Keys: + and - zoom, 0 shows the whole village, arrows and WASD look around.
+  useEffect(() => {
+    if (!interactive) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target instanceof HTMLElement ? e.target : null;
+      if (focus || el?.closest("input, textarea, [contenteditable]")) return;
+      const k = e.key.toLowerCase();
+      if (k === "+" || k === "=") zoomBy(0.8);
+      else if (k === "-" || k === "_") zoomBy(1.25);
+      else if (k === "0") steer(FULL);
+      else if (k === "arrowleft" || k === "a") panBy(-90, 0);
+      else if (k === "arrowright" || k === "d") panBy(90, 0);
+      else if (k === "arrowup" || k === "w") panBy(0, -90);
+      else if (k === "arrowdown" || k === "s") panBy(0, 90);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [interactive, focus]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!interactive || focus) return;
-    drag.current = { px: e.clientX, py: e.clientY, cam: free, moved: false };
+    drag.current = { px: e.clientX, py: e.clientY, cam: freeRef.current, moved: false };
   };
   const onPointerMove = (e: React.PointerEvent) => {
     const d = drag.current;
@@ -216,7 +267,7 @@ export default function Scene({
       setDragging(true);
     }
     const { s } = scaleOf(d.cam);
-    setFree(clamp({ ...d.cam, x: d.cam.x - dx / s, y: d.cam.y - dy / s }));
+    steer({ ...d.cam, x: d.cam.x - dx / s, y: d.cam.y - dy / s });
   };
   const onPointerUp = () => {
     if (drag.current?.moved) {
@@ -230,14 +281,24 @@ export default function Scene({
   const viewBox = `${camera.x} ${camera.y} ${camera.w} ${(camera.w * H) / W}`;
   const zoomed = camera.w < W * 0.8;
 
+  const snap = dragging || (instant.current && !focus);
   return (
+    <div className="relative h-full w-full">
+    {interactive && !focus && (
+      <div className="absolute bottom-12 right-3 z-10 flex flex-col overflow-hidden rounded-lg border border-[#5a3a22] bg-[#1c1714]/80 text-[#f3e6c8] shadow-lg">
+        <button className="h-8 w-8 text-lg hover:bg-white/10" title="Zoom in (+)" onClick={() => zoomBy(0.75)}>+</button>
+        <button className="h-8 w-8 border-y border-[#5a3a22] text-lg hover:bg-white/10" title="Zoom out (-)" onClick={() => zoomBy(1.33)}>−</button>
+        <button className="h-8 w-8 text-[13px] hover:bg-white/10" title="Whole village (0)" onClick={() => steer(FULL)}>⤢</button>
+      </div>
+    )}
     <motion.svg ref={svg} initial={false} animate={{ viewBox }}
-      transition={{ duration: dragging ? 0 : focus ? 0.9 : 0.6, ease: [0.3, 0.7, 0.2, 1] }}
+      transition={{ duration: snap ? 0 : focus ? 0.9 : 0.6, ease: [0.3, 0.7, 0.2, 1] }}
       preserveAspectRatio="xMidYMid slice"
       className={`h-full w-full select-none ${interactive && !focus ? (dragging ? "cursor-grabbing" : "cursor-grab") : ""}`}
       style={{ touchAction: "none" }}
       onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
       <World sky={sky} />
+      {life && <Life night={sky.night} />}
       <Ambient night={sky.night} />
       {extras}
 
@@ -348,6 +409,7 @@ export default function Scene({
       </defs>
       <rect x={camera.x} y={camera.y} width={camera.w} height={(camera.w * H) / W} fill="url(#vignette)" pointerEvents="none" />
     </motion.svg>
+    </div>
   );
 }
 

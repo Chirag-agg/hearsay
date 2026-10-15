@@ -54,5 +54,29 @@
   "inspector": {
     "top": 9,
     "bottom": 62
+  },
+  "farmer": {
+    "top": 6,
+    "bottom": 62
+  },
+  "maid": {
+    "top": 14,
+    "bottom": 62
+  },
+  "merchant": {
+    "top": 9,
+    "bottom": 62
+  },
+  "pilgrim": {
+    "top": 14,
+    "bottom": 62
+  },
+  "washer": {
+    "top": 12,
+    "bottom": 62
+  },
+  "watchman": {
+    "top": 6,
+    "bottom": 62
   }
 }
