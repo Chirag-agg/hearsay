@@ -10,7 +10,7 @@ import { api, hhmm, type Answer, type DetectiveStep, type GameEvent, type GodCla
 import QueryMonitor from "../components/QueryMonitor";
 import Accusation from "./Accusation";
 import { sound } from "./audio";
-import { Portrait } from "./characters";
+import { Portrait, type Dir } from "./characters";
 import Dialogue, { type Follow } from "./Dialogue";
 import Flashback from "./Flashback";
 import { ActionBar, Watch, Whispers } from "./Hud";
@@ -60,7 +60,7 @@ export default function Game() {
   const [feed, setFeed] = useState<GameEvent[]>([]);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [emotes, setEmotes] = useState<Record<string, string>>({});
-  const [glance, setGlance] = useState<Record<string, 1 | -1>>({});
+  const [glance, setGlance] = useState<Record<string, Dir>>({});
   const [grudges, setGrudges] = useState<Set<string>>(new Set()); // villagers whose trust in you dropped
   const [version, setVersion] = useState(0);
   const seq = useRef(0);
@@ -120,7 +120,7 @@ export default function Game() {
     const t = window.setInterval(() => {
       const ids = Object.keys(STANDS);
       const id = ids[Math.floor(Math.random() * ids.length)];
-      setGlance((gl) => ({ ...gl, [id]: gl[id] === -1 ? 1 : -1 }));
+      setGlance((gl) => ({ ...gl, [id]: (["down", "down", "left", "right"] as Dir[])[Math.floor(Math.random() * 4)] }));
     }, 2600);
     return () => window.clearInterval(t);
   }, [mode]);
@@ -204,7 +204,7 @@ export default function Game() {
         const pairs = events.filter((e) => e.type === "rumor_spread").flatMap((e) => (e.pairs as string[][]) ?? []);
         if (pairs.length) {
           const shown = pairs.filter(([a, b]) => STANDS[a] && STANDS[b]).slice(0, 9);
-          const fresh = shown.map(([a, b], i) => ({ id: `${events[0].seq}-${a}-${b}`, from: STANDS[a], to: STANDS[b], delay: i * 0.35 }));
+          const fresh = shown.map(([a, b], i) => ({ id: `${events[0].seq}-${i}-${a}-${b}`, from: STANDS[a], to: STANDS[b], delay: i * 0.35 }));
           setBubbles((bs) => [...bs, ...fresh]);
           shown.forEach(([a], i) => window.setTimeout(() => emote(a, "💬", 1600), i * 350));
           setTimeout(() => setBubbles((bs) => bs.filter((b) => !fresh.includes(b))), 2600 + fresh.length * 350 + 400);
@@ -360,7 +360,7 @@ export default function Game() {
     marker: !talkingTo && !minds && obj.targets.includes(id),
     emote: emotes[id],
     mood: emotes[id] === "❗" ? "worried" : grudges.has(id) || emotes[id] === "😠" ? "angry" : undefined,
-    facing: (talkingTo === id ? (player.x < STANDS[id].x ? -1 : 1) : glance[id] ?? 1) as 1 | -1,
+    dir: talkingTo === id ? (player.x < STANDS[id].x ? "left" : "right") : glance[id] ?? "down",
   }));
   const mindCounts = minds && Object.fromEntries(Object.entries(minds).map(([id, m]) => [id, { beliefs: m.claims.length, heard: m.heard, mutated: m.mutated }]));
   const focus = talkingTo ? { x: (player.x + STANDS[talkingTo].x) / 2, y: STANDS[talkingTo].y } : null;
@@ -369,6 +369,7 @@ export default function Game() {
     <div className="absolute inset-0 overflow-hidden bg-black">
       <div className="absolute inset-0">
         <Scene sky={sky} villagers={villagers} hub={hub} player={player} bubbles={bubbles} minds={mindCounts}
+          playerDir={talkingTo ? (player.x < STANDS[talkingTo].x ? "right" : "left") : undefined}
           inspector={inspector?.at ?? null}
           onVillager={onVillager}
           onArrive={arrive}

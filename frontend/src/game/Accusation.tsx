@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { api, type Answer, type Verdict } from "../api";
 import { sound } from "./audio";
-import { Figure, LOOKS } from "./characters";
+import { SPRITES, Sprite } from "./characters";
 
 const MOTIVES = ["A debt to Silas they couldn't pay", "Silas threatened to take their livelihood", "A quarrel that turned violent", "To keep a secret"];
 
@@ -16,7 +16,7 @@ export default function Accusation({ g, answers, names, onVerdict, onClose }: {
   onVerdict: (v: Verdict) => void;
   onClose: () => void;
 }) {
-  const suspects = Object.keys(names).filter((id) => LOOKS[id] && id !== "silas");
+  const suspects = Object.keys(names).filter((id) => SPRITES[id] && id !== "silas");
   const [suspect, setSuspect] = useState<string | null>(null);
   const [motive, setMotive] = useState("");
   const [evidence, setEvidence] = useState<string[]>([]);
@@ -58,7 +58,7 @@ export default function Accusation({ g, answers, names, onVerdict, onClose }: {
               return (
                 <g key={id} transform={`translate(${x} 150)`} className="cursor-pointer" onClick={() => setSuspect(id)}>
                   {on && <ellipse cx="0" cy="-60" rx="40" ry="80" fill="#ffd27a" opacity="0.35" />}
-                  <g transform={`scale(${on ? 1.25 : 1.1})`}><Figure look={LOOKS[id]} talking={on} /></g>
+                  <g transform={`scale(${on ? 1.12 : 1})`}><Sprite who={id} talking={on} mood={on ? "worried" : "neutral"} /></g>
                   <text y="16" textAnchor="middle" fontSize="13" fill={on ? "#9a2f1f" : "#3a2a1e"} fontWeight={on ? 700 : 400}>
                     {names[id]?.replace(/^(Father|Lady|Dr\.|Constable) /, "").split(" ")[0]}
                   </text>

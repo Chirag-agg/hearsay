@@ -5,7 +5,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "./audio";
-import { Figure, LOOKS, type Mood } from "./characters";
+import { Sprite, type Dir, type Mood } from "./characters";
 import { H, Lighting, PLACES, W, World, type Sky } from "./world";
 
 export type Point = { x: number; y: number };
@@ -16,7 +16,7 @@ export type Actor = {
   id: string;
   name: string;
   at: Point;
-  facing?: 1 | -1;
+  dir?: Dir; // which way they face (front by default)
   talking?: boolean;
   thinking?: boolean;
   dim?: boolean;
@@ -37,18 +37,20 @@ function clamp(c: Camera): Camera {
 function Walker({ id, to, children, onArrive, speed = 220, steps = false }: {
   id: string;
   to: Point;
-  children: (walking: boolean, facing: 1 | -1) => React.ReactNode;
+  children: (walking: boolean, dir: Dir) => React.ReactNode;
   onArrive?: () => void;
   speed?: number;
   steps?: boolean;
 }) {
   const from = useRef<Point>(to);
   const [walking, setWalking] = useState(false);
-  const [facing, setFacing] = useState<1 | -1>(1);
-  const dist = Math.hypot(to.x - from.current.x, to.y - from.current.y);
+  const [dir, setDir] = useState<Dir>("down");
+  const dx = to.x - from.current.x;
+  const dy = to.y - from.current.y;
+  const dist = Math.hypot(dx, dy);
   useEffect(() => {
-    if (to.x !== from.current.x) setFacing(to.x > from.current.x ? 1 : -1);
-  }, [to.x]);
+    if (dist >= 1) setDir(Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
+  }, [to.x, to.y]);
   useEffect(() => {
     if (!walking || !steps) return;
     const t = window.setInterval(() => sound.step(), 230);
@@ -64,10 +66,11 @@ function Walker({ id, to, children, onArrive, speed = 220, steps = false }: {
       onAnimationComplete={() => {
         from.current = to;
         setWalking(false);
+        setDir("down");
         onArrive?.();
       }}
     >
-      {children(walking, facing)}
+      {children(walking, dir)}
     </motion.g>
   );
 }
@@ -137,13 +140,14 @@ function Overhead({ v }: { v: Actor }) {
 }
 
 export default function Scene({
-  sky, villagers, hub, player, inspector, bubbles, minds, onVillager, onArrive, onInspectorArrive, interactive = true, extras,
+  sky, villagers, hub, player, playerDir, inspector, bubbles, minds, onVillager, onArrive, onInspectorArrive, interactive = true, extras,
   walkers, focus, labels = false,
 }: {
   sky: Sky;
   villagers: Actor[];
   hub?: string;
   player?: Point | null;
+  playerDir?: Dir; // which way the player faces while standing (towards whoever they're talking to)
   inspector?: Point | null;
   bubbles: Bubble[];
   minds?: Record<string, { beliefs: number; heard: number; mutated: number }> | null;
@@ -258,9 +262,7 @@ export default function Scene({
               )}
             </g>
           )}
-          <g transform="scale(1.15)">
-            <Figure look={LOOKS[v.id]} facing={v.facing ?? 1} talking={v.talking} mood={v.mood} />
-          </g>
+          <Sprite who={v.id} dir={v.dir} talking={v.talking} mood={v.mood} />
           <Overhead v={v} />
           {(labels || zoomed || hover === v.id) && !v.talking && (
             <g transform="translate(0 18)">
@@ -282,9 +284,9 @@ export default function Scene({
 
       {walkers?.map((w) => (
         <Walker key={w.id} id={w.id} to={w.at} speed={w.speed ?? 160}>
-          {(walking, facing) => (
+          {(walking, dir) => (
             <g>
-              <g transform="scale(1.15)"><Figure look={LOOKS[w.look]} walking={walking} facing={facing} /></g>
+              <Sprite who={w.look} walking={walking} dir={dir} />
               {w.label && (
                 <g transform="translate(0 20)">
                   <rect x={-w.label.length * 3.6 - 10} y="-12" width={w.label.length * 7.2 + 20} height="20" rx="10" fill="#0b1026" opacity="0.8" />
@@ -298,9 +300,9 @@ export default function Scene({
 
       {inspector && (
         <Walker id="inspector" to={inspector} onArrive={onInspectorArrive} speed={260}>
-          {(walking, facing) => (
+          {(walking, dir) => (
             <g>
-              <g transform="scale(1.15)"><Figure look={LOOKS.inspector} walking={walking} facing={facing} /></g>
+              <Sprite who="inspector" walking={walking} dir={dir} />
               <g transform="translate(0 18)">
                 <rect x="-56" y="-11" width="112" height="18" rx="9" fill="#2d5f78" opacity="0.85" />
                 <text y="2.5" textAnchor="middle" fontSize="11" fill="#fff">Inspector Graves</text>
@@ -311,10 +313,10 @@ export default function Scene({
       )}
       {player && (
         <Walker id="player" to={player} onArrive={onArrive} steps>
-          {(walking, facing) => (
+          {(walking, dir) => (
             <g>
               <ellipse cx="0" cy="2" rx="26" ry="8" fill="none" stroke="#ffd27a" strokeWidth="2" opacity="0.7" className="pulse" />
-              <g transform="scale(1.15)"><Figure look={LOOKS.player} walking={walking} facing={facing} /></g>
+              <Sprite who="player" walking={walking} dir={walking ? dir : playerDir ?? dir} />
             </g>
           )}
         </Walker>

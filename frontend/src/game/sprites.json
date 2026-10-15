@@ -1,0 +1,58 @@
+{
+  "elena": {
+    "top": 14,
+    "bottom": 62
+  },
+  "elenaNight": {
+    "top": 14,
+    "bottom": 62
+  },
+  "jonas": {
+    "top": 13,
+    "bottom": 62
+  },
+  "wren": {
+    "top": 12,
+    "bottom": 63
+  },
+  "bess": {
+    "top": 12,
+    "bottom": 62
+  },
+  "pip": {
+    "top": 6,
+    "bottom": 62
+  },
+  "aldric": {
+    "top": 15,
+    "bottom": 62
+  },
+  "tilly": {
+    "top": 22,
+    "bottom": 62
+  },
+  "hale": {
+    "top": 9,
+    "bottom": 62
+  },
+  "brann": {
+    "top": 6,
+    "bottom": 62
+  },
+  "imogen": {
+    "top": 12,
+    "bottom": 62
+  },
+  "silas": {
+    "top": 9,
+    "bottom": 62
+  },
+  "player": {
+    "top": 9,
+    "bottom": 62
+  },
+  "inspector": {
+    "top": 9,
+    "bottom": 62
+  }
+}

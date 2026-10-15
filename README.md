@@ -141,7 +141,8 @@ backend/
   app/detective/       MCP tools and the detective agent
   mcp_server/server.py the hearsay-graph MCP server
 frontend/src/          village map, interrogation, case board, detective, accusation, God view
-scripts/               seed, ask, replay_demo, run_detective and the checks
+frontend/public/sprites/  the cast's LPC walk sheets and their CREDITS.md
+scripts/               seed, ask, replay_demo, run_detective, build_sprites and the checks
 ```
 
 ## Cypher queries
@@ -489,3 +490,12 @@ This project was built with AI coding assistants. The architecture doc was draft
 ## Data
 
 All people, places and events are fictional and synthetic.
+
+## Art
+
+The character sprites are composed from [Liberated Pixel Cup](https://lpc.opengameart.org/) art, via the
+[Universal LPC Spritesheet Character Generator](https://github.com/LiberatedPixelCup/Universal-LPC-Spritesheet-Character-Generator).
+Each piece is licensed CC-BY-SA, OGA-BY, GPL or CC0. The authors and licenses for every file we use are in
+[frontend/public/sprites/CREDITS.md](frontend/public/sprites/CREDITS.md). The composed sheets are shared under the same terms.
+To rebuild them, check out the generator and run `python scripts/build_sprites.py <checkout>`. The cast's
+outfits are in `scripts/sprites.json`, and `--list` prints the sprite files a sparse checkout needs.

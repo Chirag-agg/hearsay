@@ -63,19 +63,11 @@ pre.cypher {
 
 /* --- characters --- */
 .breathe { animation: breathe 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom center; }
-.walking .breathe { animation: bob 0.42s ease-in-out infinite; }
-.leg-l, .leg-r, .arm-l, .arm-r { transform-box: fill-box; transform-origin: top center; }
-.walking .leg-l { animation: swing 0.42s ease-in-out infinite alternate; }
-.walking .leg-r { animation: swing 0.42s ease-in-out infinite alternate-reverse; }
-.walking .arm-l { animation: swing 0.42s ease-in-out infinite alternate-reverse; }
-.walking .arm-r { animation: swing 0.42s ease-in-out infinite alternate; }
-.blink { animation: blink 4.5s infinite; transform-box: fill-box; transform-origin: center; }
-.talk { animation: talk 0.22s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: center; }
-@keyframes breathe { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-1px) scaleY(1.01) } }
-@keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2.5px) } }
-@keyframes swing { from { transform: rotate(-16deg) } to { transform: rotate(16deg) } }
-@keyframes blink { 0%, 94%, 100% { transform: scaleY(1) } 96% { transform: scaleY(0.1) } }
-@keyframes talk { from { transform: scaleY(0.4) } to { transform: scaleY(1.3) } }
+.talking .breathe { animation: bob 0.36s ease-in-out infinite; }
+.talk-bob { animation: bob 0.36s ease-in-out infinite; }
+.sprite image { image-rendering: pixelated; }
+@keyframes breathe { 0%, 100% { transform: scaleY(1) } 50% { transform: scaleY(1.015) } }
+@keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2.4px) } }
 
 /* --- scenery --- */
 .smoke { animation: smoke 4s ease-out infinite; opacity: 0; }
@@ -106,7 +98,6 @@ pre.cypher {
 /* --- ambient life --- */
 .sweat { animation: sweat 1.6s ease-in infinite; }
 @keyframes sweat { 0% { transform: translateY(0); opacity: 0 } 20% { opacity: 1 } 100% { transform: translateY(8px); opacity: 0 } }
-.figure { filter: drop-shadow(0 0 0.7px #241812) drop-shadow(0 0 0.5px #241812); }
 .cloud-shadow { animation: cloudShadow 140s linear infinite; }
 @keyframes cloudShadow { from { transform: translateX(-300px) } to { transform: translateX(1900px) } }
 .flock { animation-name: flock; animation-timing-function: linear; animation-iteration-count: infinite; }
