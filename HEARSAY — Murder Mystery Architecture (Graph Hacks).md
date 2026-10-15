@@ -165,7 +165,9 @@ Times are stored as `t` = minutes since midnight (21:30 = 1290). A claim covers 
 (:Self)-[:HAD]->(:Conversation {player_id, session, tick})  // episodic memory
 (:Conversation)-[:INCLUDED]->(:Question {text, tick})-[:ANSWERED_WITH]->(:Claim)
 (:Rule {id, trigger, action, active, subject_id, t_from, t_to, topic, asked_of,
-        hides, supersedes, stretch})-[:USES]->(:Claim)    // procedural memory (liars)
+        hides, uses, supersedes, stretch})-[:USES]->(:Claim)    // procedural memory (liars)
+   // uses: the USES claim ids as a list too, so Q1 can tell the rule's own lie from what it covers
+   // Description ids follow d_<man|woman|boy|girl>[_<carrying>], so the engine can blur names without a lookup
    // trigger: asked_whereabouts | heard_detective_asked; action: replace | plant
    // hides: ids of the true claims the lie replaces; supersedes: the rule this one switches off
 (:Gate {id, min_trust, cite_pred, cite_subject_id, cite_toward_id, refusal})-[:GUARDS]->(:Claim)
@@ -252,7 +254,7 @@ The detective never reads the truth graph. It only sees what villagers said to i
 
 Gossip is plain Python with a seeded random generator, not the LLM. The same seed always produces the same village, which keeps the demo reproducible and every rumor explainable.
 
-**One tick = 30 in-game minutes.** The engine runs 12 ticks before the player arrives, so rumors have already travelled by the morning. Each interrogation then runs one more tick.
+**One tick = 30 in-game minutes.** The engine runs 12 ticks before the player arrives, so rumors have already travelled by the morning. Each interrogation then runs one more tick. Because the same seed always gives the same village, `seed.py` runs the 12 pre-game ticks once on the templates (with `GAME_SEED`) and every game copies the result, so `POST /games` only copies 13 graphs. The tick counter and seed live in a `(:Clock {tick, seed})` node in the truth graph. On FalkorDB Cloud a tick takes about 3 seconds; locally about 0.1.
 
 **What happens in one tick:**
 
@@ -270,7 +272,7 @@ Gossip is plain Python with a seeded random generator, not the LLM. The same see
 
 If the random draws happened inside parallel tasks, the order they ran in would change the outcome, and the same seed would give a different village. Because every interrogation also runs a tick, `replay_demo.py` has to ask its questions in a fixed order too.
 
-**IDs come from the seed too.** A random `uid()` would give every claim a new ID on each run, so replays and the IDs shown in the video would never match. `seeded_id` is `uuid5` of the game, tick, teller, listener, rumor and parent claim, and the same scheme is used for statements and case claims. The parent claim is needed because a teller can hold two versions of the same rumor, and both retellings in one tick would otherwise get the same ID.
+**IDs come from the seed too.** A random `uid()` would give every claim a new ID on each run, so replays and the IDs shown in the video would never match. `seeded_id` is `uuid5` of the seed (not the game ID, so two games from one seed are identical), tick, teller, listener, rumor and parent claim, and the same scheme is used for statements and case claims. The parent claim is needed because a teller can hold two versions of the same rumor, and both retellings in one tick would otherwise get the same ID.
 
 | Detail | How it changes | Who changes it most |
 | --- | --- | --- |
@@ -404,7 +406,9 @@ CREATE INDEX FOR (x:Contradiction) ON (x.key)
 ```cypher
 MATCH (c:Claim)-[:ABOUT]->(x {id: $person})
 WHERE c.t_from <= $t_to AND c.t_to >= $t_from AND c.confidence >= 0.2
-OPTIONAL MATCH (r:Rule {active: true}) WHERE c.id IN r.hides
+OPTIONAL MATCH (r:Rule {active: true})
+WHERE c.id IN r.hides
+   OR (r.subject_id = c.subject_id AND c.t_from < r.t_to AND r.t_from < c.t_to AND NOT c.id IN r.uses)
 WITH c, count(r) AS hidden_by
 WHERE hidden_by = 0
 OPTIONAL MATCH (c)-[:AT]->(pl:Place)
@@ -415,14 +419,16 @@ ORDER BY confidence DESC, claim_id
 LIMIT 5
 ```
 
-Claims an active rule `hides` are dropped before `LIMIT`. Elena has six claims about 21:00 to 22:00, so filtering after the query could cut her lie and leave the truth; `smoke_cypher.py` checks she gives only the cover story, and only the new lie once `w02` switches on her changed story. `claim_id` breaks ties so `REPLAY=1` always gets the same five.
+An active rule covers its topic: claims it `hides`, plus every other claim about its subject inside its window (gossip the liar has heard about herself), except its own lie, are dropped before `LIMIT`. Elena has six claims about 21:00 to 22:00, so filtering after the query could cut her lie and leave the truth; `smoke_cypher.py` checks she gives only the cover story, and only the new lie once `w02` switches on her changed story. `claim_id` breaks ties so `REPLAY=1` always gets the same five.
 
 **Q1b. What do I believe happened at this place in this window?** Q1 is keyed on a person, but a sighting is about a `Description` at a place, so "Did anyone see anything at the Mill?" needs this one. It is how Bess finds "a man near the Mill".
 
 ```cypher
 MATCH (c:Claim)-[:AT]->(pl:Place {id: $place})
 WHERE c.t_from <= $t_to AND c.t_to >= $t_from AND c.confidence >= 0.2
-OPTIONAL MATCH (r:Rule {active: true}) WHERE c.id IN r.hides
+OPTIONAL MATCH (r:Rule {active: true})
+WHERE c.id IN r.hides
+   OR (r.subject_id = c.subject_id AND c.t_from < r.t_to AND r.t_from < c.t_to AND NOT c.id IN r.uses)
 WITH c, count(r) AS hidden_by
 WHERE hidden_by = 0
 OPTIONAL MATCH (c)-[:ABOUT]->(x)
@@ -650,7 +656,7 @@ One FastAPI backend serves the game. Long answers (villager dialogue, detective 
 
 | Method | Path | What it does |
 | --- | --- | --- |
-| POST | `/games` | New game: copies the template graphs, runs 12 gossip ticks, returns `game_id` |
+| POST | `/games` | New game: copies the template graphs (already 12 gossip ticks in), returns `game_id` |
 | GET | `/games/{g}` | Clock, interrogations left, session number |
 | GET | `/games/{g}/village` | People, map, who knows whom, gossip hubs (Q4), circles (Q5) |
 | POST | `/games/{g}/ask` | `{villager_id, question}`: streams the answer, returns statement and claim IDs |

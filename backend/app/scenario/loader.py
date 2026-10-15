@@ -9,10 +9,9 @@ tpl_npc_<id> one villager's memory: Self, everyone they can name, places, object
 New games copy these with GRAPH.COPY (app.db.new_game), which keeps the indexes.
 """
 
-from falkordb import FalkorDB, Graph
-
-from app import db as dbmod
-from app import queries
+from app import db
+from app.db import create_edges as _edges
+from app.db import create_nodes as _nodes
 
 PUBLIC_FIELDS = ("id", "name", "role", "sex", "adult", "build")
 ENGINE_FIELDS = ("accuracy", "honesty", "talkativeness", "mutation_bias")
@@ -20,36 +19,12 @@ CLAIM_FIELDS = ("id", "root_id", "parent_id", "pred", "subject_id", "place_id", 
                 "t_from", "t_to", "confidence", "origin", "salience", "mutated", "private",
                 "crowns", "note", "dormant")
 RULE_FIELDS = ("id", "trigger", "action", "active", "subject_id", "t_from", "t_to", "topic", "asked_of",
-               "hides", "supersedes", "stretch")
+               "hides", "uses", "supersedes", "stretch")
 
 
 def _pick(d: dict, fields) -> dict:
     """Keep the listed fields that are set; FalkorDB has no null properties."""
     return {k: d[k] for k in fields if d.get(k) is not None}
-
-
-def _nodes(g: Graph, label: str, rows: list[dict]) -> None:
-    if rows:
-        g.query(f"UNWIND $rows AS r CREATE (n:{label}) SET n = r", {"rows": rows})
-
-
-def _edges(g: Graph, rel: str, src: str, dst: str, rows: list[tuple[str, str, dict]]) -> None:
-    """Create (src {id: a})-[:rel props]->(dst {id: b}) per row; every endpoint must exist."""
-    if not rows:
-        return
-    params = {"rows": [{"a": a, "b": b, "p": p} for a, b, p in rows]}
-    result = g.query(
-        f"UNWIND $rows AS r MATCH (a:{src} {{id: r.a}}), (b:{dst} {{id: r.b}}) "
-        f"CREATE (a)-[e:{rel}]->(b) SET e = r.p",
-        params,
-    )
-    if result.relationships_created != len(rows):
-        raise RuntimeError(f"{rel} {src}->{dst}: created {result.relationships_created} of {len(rows)} edges")
-
-
-def _indexes(g: Graph) -> None:
-    for stmt in queries.load_statements("indexes"):
-        g.query(stmt)
 
 
 class Scenario:
@@ -94,7 +69,7 @@ class Scenario:
         return round(self.confidence(parent_owner["id"], parent) * self.trust(owner, teller) * 0.9, 3)
 
 
-def build_village(g: Graph, sc: Scenario) -> None:
+def build_village(g: str, sc: Scenario) -> None:
     s = sc.s
     _nodes(g, "Person", sc.public_people())
     _nodes(g, "Place", sc.places())
@@ -109,13 +84,13 @@ def build_village(g: Graph, sc: Scenario) -> None:
     _edges(g, "WORKS_AT", "Person", "Place", [(p["id"], p["works_at"], {}) for p in sc.people if p.get("works_at")])
 
 
-def build_case(g: Graph, sc: Scenario) -> None:
+def build_case(g: str, sc: Scenario) -> None:
     _nodes(g, "Person", sc.public_people())
     _nodes(g, "Place", sc.places())
     _edges(g, "ROAD", "Place", "Place", sc.roads())
 
 
-def build_world(g: Graph, sc: Scenario) -> None:
+def build_world(g: str, sc: Scenario, seed: int) -> None:
     s, truth = sc.s, sc.s["truth"]
     people = []
     for p in sc.people:
@@ -128,6 +103,8 @@ def build_world(g: Graph, sc: Scenario) -> None:
     _edges(g, "ROAD", "Place", "Place", sc.roads())
     _nodes(g, "Object", [_pick(o, ("id", "name")) for o in s["objects"]])
     _nodes(g, "Event", [{"id": f"e_{i:02d}", **e} for i, e in enumerate(truth["events"], 1)])
+    # The gossip clock: the night's scripted hops are ticks -2..0, the engine continues from here.
+    _nodes(g, "Clock", [{"tick": 0, "seed": seed}])
     _edges(g, "WAS_AT", "Person", "Place",
            [(w["person"], w["place"], {"from_t": w["from_t"], "to_t": w["to_t"]}) for w in truth["was_at"]])
     _edges(g, "OWES", "Person", "Person", [(o["from"], o["to"], {"crowns": o["crowns"]}) for o in truth["owes"]])
@@ -143,7 +120,7 @@ def build_world(g: Graph, sc: Scenario) -> None:
             for x in truth["gossiped"]])
 
 
-def build_npc(g: Graph, sc: Scenario, v: dict) -> None:
+def build_npc(g: str, sc: Scenario, v: dict) -> None:
     s = sc.s
     me = v["id"]
     self_row = _pick(v, ("id", "name", "role", "persona", "player_trust", "player_warmth") + ENGINE_FIELDS)
@@ -188,29 +165,26 @@ def build_npc(g: Graph, sc: Scenario, v: dict) -> None:
     _edges(g, "GUARDS", "Gate", "Claim", [(x["id"], cid, {}) for x in gates for cid in x["guards"]])
 
 
-def build_templates(client: FalkorDB, scenario: dict) -> dict[str, Graph]:
-    """Delete every tpl_* graph and rebuild the 13 templates. Returns them by name."""
-    for name in client.list_graphs():
+def build_templates(scenario: dict, seed: int) -> list[str]:
+    """Delete every tpl_* graph and rebuild the 13 templates, before any gossip. Returns their names."""
+    for name in db.list_graphs():
         if name.startswith("tpl_"):
-            client.select_graph(name).delete()
+            db.delete_graph(name)
 
     sc = Scenario(scenario)
+    tpl = db.TEMPLATES
     builders = {
-        "tpl_world": lambda g: build_world(g, sc),
-        "tpl_village": lambda g: build_village(g, sc),
-        "tpl_case": lambda g: build_case(g, sc),
+        tpl.world: lambda g: build_world(g, sc, seed),
+        tpl.village: lambda g: build_village(g, sc),
+        tpl.case: lambda g: build_case(g, sc),
     }
     for v in scenario["villagers"]:
-        builders[f"tpl_npc_{v['id']}"] = lambda g, v=v: build_npc(g, sc, v)
+        builders[tpl.npc(v["id"])] = lambda g, v=v: build_npc(g, sc, v)
 
-    expected = set(dbmod.template_graphs())
-    if set(builders) != expected:
-        raise RuntimeError(f"scenario villagers don't match app.db.VILLAGERS: {sorted(set(builders) ^ expected)}")
+    if set(builders) != set(tpl.all()):
+        raise RuntimeError(f"scenario villagers don't match app.db.VILLAGERS: {sorted(set(builders) ^ set(tpl.all()))}")
 
-    graphs = {}
     for name, build in builders.items():
-        g = client.select_graph(name)
-        _indexes(g)
-        build(g)
-        graphs[name] = g
-    return graphs
+        db.run_statements(name, "indexes")
+        build(name)
+    return list(builders)

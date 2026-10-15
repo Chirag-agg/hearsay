@@ -48,8 +48,9 @@ backend/
   mcp_server/server.py  hearsay-graph MCP tools
 frontend/src/           pages and components (Vite + React, not created yet)
 scripts/
-  seed.py               builds the tpl_* graphs
+  seed.py               builds the tpl_* graphs and runs the 12 pre-game gossip ticks
   smoke_cypher.py       checks every query on FalkorDB
+  check_engine.py       checks the same seed always gives the same village
   replay_demo.py        plays the intended solving path end to end
 ```
 

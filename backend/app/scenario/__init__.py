@@ -8,6 +8,22 @@ PREDS = {"WAS_AT", "LEFT", "CARRIED", "ARGUED_WITH", "THREATENED", "OWES", "SAW"
 ORIGINS = {"witnessed", "heard", "lie"}
 
 
+_NOUNS = {("m", True): "man", ("f", True): "woman", ("m", False): "boy", ("f", False): "girl"}
+
+
+def desc_id(sex: str, adult: bool, carrying: str | None = None) -> str:
+    """Descriptions are named by their attributes ("a man with a lantern" = d_man_lantern), so the
+    gossip engine can blur a name into a description, or change one attribute, without a lookup."""
+    return f"d_{_NOUNS[(sex, adult)]}" + (f"_{carrying}" if carrying else "")
+
+
+def desc_attrs(description_id: str) -> dict:
+    noun, _, carrying = description_id.removeprefix("d_").partition("_")
+    sex, adult = next(k for k, v in _NOUNS.items() if v == noun)
+    text = f"a {noun}" + (f" with a {carrying}" if carrying else "")
+    return {"id": description_id, "text": text, "sex": sex, "adult": adult, "carrying": carrying or None}
+
+
 def load_scenario(name: str = "hollowmere") -> dict:
     scenario = json.loads((SCENARIO_DIR / f"{name}.json").read_text(encoding="utf-8"))
     validate(scenario)
@@ -26,6 +42,9 @@ def validate(s: dict) -> None:
         if ref is not None and ref not in allowed:
             errors.append(f"{what}: unknown id {ref!r}")
 
+    for d in s["descriptions"]:
+        if d["id"] != desc_id(d["sex"], d["adult"], d.get("carrying")) or d["text"] != desc_attrs(d["id"])["text"]:
+            errors.append(f"description {d['id']!r} doesn't follow the d_<noun>[_<carrying>] scheme")
     for r in s["roads"]:
         check(r["a"], places, "road")
         check(r["b"], places, "road")

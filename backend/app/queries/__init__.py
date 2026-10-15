@@ -26,5 +26,25 @@ def load_statements(name: str) -> list[str]:
     return [stmt.strip() for stmt in load(name).split(";") if stmt.strip()]
 
 
+@cache
 def names() -> list[str]:
     return sorted(path.stem for path in QUERY_DIR.glob("*.cypher"))
+
+
+# FalkorDB features a query leans on, found from its text: the README's "features used" table.
+FEATURES = {
+    "algo.pageRank": "PageRank",
+    "algo.labelPropagation": "Label propagation (CDLP)",
+    "algo.SPpaths": "Weighted shortest paths",
+    "*0..": "Variable-length paths (zero-length included)",
+    "MERGE": "MERGE upsert",
+    "CREATE INDEX": "Indexes",
+    "collect(": "Aggregation",
+    "OPTIONAL MATCH": "Optional match",
+}
+
+
+@cache
+def features(name: str) -> list[str]:
+    text = load(name)
+    return [label for needle, label in FEATURES.items() if needle in text]
