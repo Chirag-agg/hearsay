@@ -16,7 +16,7 @@ as "a man near the Mill at 22:00" with confidence of at least 0.2, and each hop
 names its teller.
 
 Case mode runs the queries on the seeded demo case and asserts the answers from
-the architecture doc (Elena 12, Jonas 9, and so on). It is a TODO until seed.py
+the intended solving path (Elena 12, Jonas 9, and so on). It is a TODO until seed.py
 and the case data exist.
 """
 

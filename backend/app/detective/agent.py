@@ -2,7 +2,7 @@
 
 It connects to our own MCP server over stdio and only knows what the tools return, so it can
 never read the truth graph. With an LLM configured (and REPLAY != 1) the model picks the tools;
-otherwise a scripted detective follows the case the way the doc's solving path does, through the
+otherwise a scripted detective follows the case the way the intended solving path does, through the
 same MCP tools, so the demo is identical on every run. Either way each step is published as a
 detective_step event (tool, arguments, Cypher, one-line result), and the run ends with a Handoff
 node on the case board that the player sees when they come back.

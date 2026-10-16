@@ -1,4 +1,4 @@
-"""Villager agent: one question, start to finish (see "Villager agent" in the architecture doc).
+"""Villager agent: one question, start to finish (see "How it works" in the README).
 
 1. Parse     keyword parser (REPLAY=1) -> intent, people, places, time window
 2. Retrieve  Q1 per person, Q1b per place, on this villager's own graph only

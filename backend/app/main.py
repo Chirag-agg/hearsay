@@ -1,4 +1,4 @@
-"""FastAPI entry point: every route from the architecture doc.
+"""FastAPI entry point: every route the game uses.
 
 Game:      POST /games, GET /games/{g}, POST /games/{g}/session, GET /games/{g}/village
 Play:      POST /games/{g}/ask, POST /games/{g}/claims/{claim_id}/source

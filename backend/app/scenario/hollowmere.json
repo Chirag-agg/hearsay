@@ -8,7 +8,7 @@
     "Claims use the graph property names directly. root_id defaults to id; confidence defaults to 1.0, or to parent x trust(listener->teller) x 0.9 for heard claims.",
     "Rule claims marked dormant start at confidence 0.0, so Q1 and Q2 skip them. Activate a rule only with w02_activate_rule, which sets Rule.active and raises its claims in one statement; agents check Rule.active.",
     "The night's rumor is scripted by the engine's own rules (one detail per hop, changed by the teller): Pip -> Hale (woman to man), Hale -> Brann (21:30 to 22:00), Brann -> Bess (Riverside path to the Mill). Ticks -2..0 are the night, before the 12 pre-game ticks.",
-    "The 8th place is the Riverside path: the doc's 20-minute Chapel-to-Mill route is split 10 + 10 so Pip's sighting has a place, and 'near the Mill' is a neighbour of it."
+    "The 8th place is the Riverside path: the design's 20-minute Chapel-to-Mill route is split 10 + 10 so Pip's sighting has a place, and 'near the Mill' is a neighbour of it."
   ],
 
   "case_file": {
