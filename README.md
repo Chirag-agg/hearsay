@@ -1,15 +1,29 @@
 # HEARSAY
 
-[![CI](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml/badge.svg)](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml)
-[![CD](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml/badge.svg)](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml)
+[![CI](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml)
+[![CD](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml)
 
 *A village that remembers. A graph that never lies.*
+
+![The village of Hollowmere by day: the case file on the left, villagers on gold rings, passers-by, a horse and cart, grazing animals and the windmill](docs/screenshots/village.png)
 
 A murder mystery in a village of 10 AI villagers. Each villager keeps its own memory graph in FalkorDB, rumors mutate as they pass from person to person, and you (or a detective agent over MCP) solve the case with graph queries, following the exact chain of who told whom.
 
 Graph Hacks 2026 (WeMakeDevs × FalkorDB). Tracks: **Agent Memory and Coordination** and **Agents That Act on Connected Data**.
 
-The full design (graph model, every query, gossip engine, agents, demo script) is in [HEARSAY — Murder Mystery Architecture (Graph Hacks).md](<HEARSAY — Murder Mystery Architecture (Graph Hacks).md>).
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Title screen: the village at night](docs/screenshots/title.png) | ![How to play: four rules after the briefing](docs/screenshots/how-to-play.png) |
+| **Title.** Hollowmere at night, before the case opens. | **How to play.** Four rules, then the case file guides you. |
+| ![Bess repeats three rumors; the first choice asks who told her about the man with a lantern](docs/screenshots/conversation.png) | ![Pip Harlow, the eyewitness, saw a woman with a lantern](docs/screenshots/eyewitness.png) |
+| **Hearsay.** Bess repeats what she heard; "Who told you about the man with a lantern?" starts the trail. | **The source.** Four hops later Pip, who actually saw it: a *woman*, at 21:30, on the Riverside path. |
+| ![Father Aldric saw Elena leave the Chapel at 21:00; a contradiction is flagged](docs/screenshots/contradiction.png) | ![The notebook's web: who told whom, and whose stories clash](docs/screenshots/notebook-web.png) |
+| **A lie.** Elena says she stayed at the Chapel until 22:00; Father Aldric saw her leave at 21:00. | **Who told whom.** The case graph as people: rumor arrows, the clash, and who it implicates. |
+| ![The live query monitor listing FalkorDB queries and features](docs/screenshots/graph-lens.png) | ![The accusation lineup with evidence bars](docs/screenshots/accusation.png) |
+| **Graph lens.** Every FalkorDB query as it runs, and the features in use (PageRank, CDLP, variable-length paths). | **The reckoning.** Pick who and why; the bars show how strongly the evidence points at each villager. |
 
 ## The case
 
@@ -152,6 +166,7 @@ frontend/src/          village map, interrogation, case board, detective, accusa
 frontend/public/sprites/  the cast's LPC walk sheets and their CREDITS.md
 frontend/public/tiles/    the LPC village map, the windmill and their CREDITS.md
 frontend/public/life/     horses, cart, boat, cows, sheep and chickens for the village's passing life, with CREDITS.md
+docs/screenshots/         the README screenshots
 scripts/               seed, ask, replay_demo, run_detective, build_sprites, build_village, build_life and the checks
 ```
 
@@ -495,7 +510,7 @@ RETURN r.id AS rule_id, claims, old.id AS superseded
 
 ## AI assistance disclosure
 
-This project was built with AI coding assistants. The architecture doc was drafted with Claude, and Claude Code wrote most of the code in this repository (backend, queries, gossip engine, agents, MCP server, frontend and the check scripts) under the team's direction and review. In the running game, an LLM only puts graph facts into words and picks the detective's tools; every fact comes from FalkorDB, and the guardrail rejects anything that doesn't.
+This project was built with AI coding assistants. The design was drafted with Claude, and Claude Code wrote most of the code in this repository (backend, queries, gossip engine, agents, MCP server, frontend and the check scripts) under the team's direction and review. In the running game, an LLM only puts graph facts into words and picks the detective's tools; every fact comes from FalkorDB, and the guardrail rejects anything that doesn't.
 
 ## Data
 
