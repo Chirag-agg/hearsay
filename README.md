@@ -1,5 +1,8 @@
 # HEARSAY
 
+[![CI](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml/badge.svg)](https://github.com/Chirag-agg/hearsay/actions/workflows/ci.yml)
+[![CD](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml/badge.svg)](https://github.com/Chirag-agg/hearsay/actions/workflows/cd.yml)
+
 *A village that remembers. A graph that never lies.*
 
 A murder mystery in a village of 10 AI villagers. Each villager keeps its own memory graph in FalkorDB, rumors mutate as they pass from person to person, and you (or a detective agent over MCP) solve the case with graph queries, following the exact chain of who told whom.
@@ -90,6 +93,8 @@ python scripts/run_detective.py                                     # the detect
 ```
 
 ## Checks
+
+Every check below runs in CI on each push and pull request (GitHub Actions, against a FalkorDB service container, with `REPLAY=1` so no LLM key is needed), along with the frontend build and both Docker images. When CI passes on `main`, CD publishes `ghcr.io/chirag-agg/hearsay-backend` and `ghcr.io/chirag-agg/hearsay-frontend`.
 
 | Script | Checks |
 | --- | --- |
