@@ -65,7 +65,9 @@ If something else already uses port 6379 (an error like `unknown command 'GRAPH.
 
 ## Playing
 
-Click a villager (the people in the case stand on a gold ring; muted passers-by, carts and animals are just village life) and your detective walks over; the camera closes in and they answer in their own voice. Everything they say becomes an evidence card. On hearsay, ask **“Who told you?”** and go and question the source: that's how you walk a rumor back to whoever actually saw it. The compass in the corner suggests the next lead, and a gold **!** marks who to see.
+The **case file** on the left is your guide: five plain steps (hear the gossip, find who really saw it, check the alibis, motive and means, name the killer), each with a **Go** button that walks you to the right person. A gold **!** marks them on the map.
+
+Click anyone standing on a gold ring (muted passers-by, carts and animals are just village life) and your detective walks over; they answer in their own voice, and everything they say becomes an evidence card. When someone repeats gossip, the first choice is **“Who told you…?”**, then **Go and ask** the person they name: that's how you walk a rumor back to whoever actually saw it. Questions you've already asked drop off the list, and what you've learned is always on the table. To accuse, pick who and why; everything in your notebook goes with you, and a bar under each suspect shows how strongly your evidence points at them.
 
 | Control | Does |
 | --- | --- |
@@ -77,7 +79,7 @@ Click a villager (the people in the case stand on a gold ring; muted passers-by,
 | M | Sound on or off (all synthesized; no audio files) |
 | Esc | Close a panel or leave a conversation |
 
-The top bar sends for **Inspector Graves** (the MCP detective agent, who walks the village as he works), opens **Mind's eye** (every villager's memory graph), the **Graph lens** (every FalkorDB query, live), and **Accuse**, which ends in a flashback of what really happened.
+The top bar holds the **Notebook** and **Accuse**; the **⋯** menu goes behind the scenes: **Inspector Graves** (the MCP detective agent, who walks the village as he solves the case), **Mind's eye** (every villager's memory graph) and the **Graph lens** (every FalkorDB query, live). Accusing ends in a flashback of what really happened. **? How to play** brings the rules back.
 
 ## Play from the terminal
 

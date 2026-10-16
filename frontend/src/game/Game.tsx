@@ -16,9 +16,9 @@ import Flashback from "./Flashback";
 import { ActionBar, Watch, Whispers } from "./Hud";
 import InspectorLog from "./InspectorLog";
 import Notebook from "./Notebook";
-import { ChapterCard, MILESTONES, MilestoneBanner, QuestTracker, milestonesFor, objective, type Milestone } from "./quests";
+import { CaseFile, ChapterCard, MILESTONES, MilestoneBanner, caseSteps, currentStep, milestonesFor, type Milestone } from "./quests";
 import Scene, { type Actor, type Bubble, type Point } from "./Scene";
-import { Briefing, Title } from "./Title";
+import { Briefing, HowToPlay, Title } from "./Title";
 import { PLACES, PLAYER_HOME, STANDS, skyAt } from "./world";
 
 type Mode = "title" | "briefing" | "play" | "flashback";
@@ -69,6 +69,7 @@ export default function Game() {
   const [banner, setBanner] = useState<Milestone | null>(null);
   const bannerQueue = useRef<Milestone[]>([]);
   const [chapter, setChapter] = useState<number | null>(null);
+  const [howto, setHowto] = useState(false);
 
   const [notebook, setNotebook] = useState<{ open: boolean; claim?: string | null }>({ open: false });
   const [accusing, setAccusing] = useState(false);
@@ -353,7 +354,8 @@ export default function Game() {
 
   const progress = Math.min(1, status.questions_asked / Math.max(1, status.questions_asked + status.questions_left));
   const sky = skyAt(progress);
-  const obj = objective(answers, unlocked, hub, names, pendingSource);
+  const steps = caseSteps(answers, unlocked, hub, names, pendingSource);
+  const obj = currentStep(steps);
   const villagers: Actor[] = Object.keys(STANDS).map((id) => ({
     id, name: names[id] ?? id, at: STANDS[id], talking: talkingTo === id,
     thinking: talkingTo === id && thinking,
@@ -384,9 +386,10 @@ export default function Game() {
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
                 className="absolute left-3 top-3 flex flex-col gap-2">
                 <Watch status={status} />
-                <QuestTracker obj={obj} count={unlocked.size} />
+                <CaseFile steps={steps} names={names} onGo={onVillager} onAccuse={() => { sound.click(); setAccusing(true); }} />
                 <div className="pointer-events-auto flex gap-2">
                   <button className="wood text-[13px]" onClick={() => setMode("title")}>☰ Menu</button>
+                  <button className="wood text-[13px]" onClick={() => setHowto(true)}>? How to play</button>
                   {status.questions_left === 0 && <button className="wood text-[13px]" onClick={nextDay}>☾ Return tomorrow</button>}
                 </div>
               </motion.div>
@@ -488,7 +491,8 @@ export default function Game() {
         )}
       </AnimatePresence>
 
-      {mode === "briefing" && <Briefing onStart={() => { sound.whoosh(); setMode("play"); setChapter(status.session); }} />}
+      {mode === "briefing" && <Briefing onStart={() => { sound.whoosh(); setMode("play"); setHowto(true); }} />}
+      {howto && mode === "play" && <HowToPlay onDone={() => { sound.click(); setHowto(false); if (status.session === 1 && answers.length === 0) setChapter(status.session); }} />}
       {mode === "flashback" && (
         <motion.div className="absolute inset-0 z-50" initial={{ clipPath: "circle(0% at 50% 50%)" }}
           animate={{ clipPath: "circle(150% at 50% 50%)" }} transition={{ duration: 1.4, ease: [0.6, 0, 0.3, 1] }}>

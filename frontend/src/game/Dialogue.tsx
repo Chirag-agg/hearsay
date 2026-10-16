@@ -84,8 +84,7 @@ export default function Dialogue({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [question, setQuestion] = useState("");
-  const [cites, setCites] = useState<string[]>([]);
-  const [picking, setPicking] = useState(false);
+  const [own, setOwn] = useState(false);
   const [about, setAbout] = useState<Follow | null>(pending ?? null);
 
   useEffect(() => {
@@ -101,12 +100,13 @@ export default function Dialogue({
     setSource(null);
     setLine("…");
     try {
-      const a = await api.ask(g, villager, q, { about_claim_id: about?.aboutClaimId, cite_statement_ids: cites });
+      // You always lay out what you've learned: a villager who'd only talk when shown the right fact will.
+      const a = await api.ask(g, villager, q, { about_claim_id: about?.aboutClaimId, cite_statement_ids: statements.map((s) => s.statement_id) });
       setAnswer(a);
       setLine(a.dialogue);
       setTyping(true);
       setQuestion("");
-      setCites([]);
+      setOwn(false);
       setAbout(null);
       onAnswer(a, !!about);
     } catch (e) {
@@ -130,12 +130,30 @@ export default function Dialogue({
     }
   };
 
-  const choices = about ? ["Who told you about that, and what exactly did you hear?"] : ASK[villager] ?? [];
+  // What you can do next, best first: follow a rumor you just heard, go after its source, or ask
+  // something you haven't asked this villager yet.
+  const asked = new Set(statements.filter((s) => s.villager === villager).map((s) => s.question));
+  // Of the rumors just repeated, the one worth chasing: a sighting (someone described, not named) first,
+  // then anyone at the Mill, then whatever came first.
+  const rumors = answer && !typing && !source ? answer.claims.filter((c) => c.can_ask_source) : [];
+  const hearsay = rumors.find((c) => /lantern|figure|someone|man |woman /i.test(c.about ?? ""))
+    ?? rumors.find((c) => c.place === "Old Mill" && !/Silas/.test(c.about ?? "")) ?? rumors[0];
+  const rumorName = hearsay?.about && !/Silas/.test(hearsay.about) ? hearsay.about.replace(/^(a|an) /i, "the ") : null;
+  type Choice = { label: string; run: () => void; lead?: boolean; free?: boolean };
+  const choices: Choice[] = [];
+  if (source?.s.ask_next && !typing) {
+    const next = source.s.ask_next;
+    choices.push({ label: `Go and ask ${source.s.source_name} about it →`, lead: true, free: true,
+      run: () => onFollow({ villager: next.villager_id, aboutClaimId: next.about_claim_id, label: source.chip.label, teller: name }) });
+  }
+  if (hearsay) choices.push({ label: rumorName ? `Who told you about ${rumorName}?` : "Who told you that?", lead: true, free: true, run: () => whoTold(hearsay) });
+  if (about) choices.push({ label: "Who told you about that, and what exactly did you hear?", lead: !hearsay, run: () => ask("Who told you about that, and what exactly did you hear?") });
+  else (ASK[villager] ?? []).filter((q) => !asked.has(q)).forEach((q) => choices.push({ label: q, run: () => ask(q) }));
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || busy) return;
       const n = Number(e.key);
-      if (n >= 1 && n <= choices.length) ask(choices[n - 1]);
+      if (n >= 1 && n <= choices.length) choices[n - 1].run();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -198,15 +216,6 @@ export default function Dialogue({
             ))}
           </AnimatePresence>
 
-          {source?.s.ask_next && !typing && (
-            <button className="wood self-start" onClick={() => onFollow({
-              villager: source.s.ask_next!.villager_id, aboutClaimId: source.s.ask_next!.about_claim_id,
-              label: source.chip.label, teller: name,
-            })}>
-              Go and ask {source.s.source_name} about it →
-            </button>
-          )}
-
           {error && <p className="text-sm font-semibold text-[#9a2f1f]">{error}</p>}
         </div>
 
@@ -217,38 +226,30 @@ export default function Dialogue({
               <button className="ml-1 font-bold" onClick={() => setAbout(null)}>×</button>
             </div>
           )}
-          {choices.map((q, i) => (
-            <button key={q} className="choice flex gap-2" disabled={busy || out} onClick={() => ask(q)}>
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#7a5230] text-[11px] font-bold text-[#f8eed6]">{i + 1}</span>
-              <span>“{q}”</span>
+          {choices.map((c, i) => (
+            <button key={c.label} className={`choice flex gap-2 ${c.lead ? "!border-[#e8a33d] !bg-[#fff3d6] font-semibold" : ""}`}
+              disabled={busy || (out && !c.free)} onClick={c.run}>
+              <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold text-[#f8eed6] ${c.lead ? "bg-[#c27a1d]" : "bg-[#7a5230]"}`}>{i + 1}</span>
+              <span>{c.label.endsWith("→") ? c.label : `“${c.label}”`}</span>
             </button>
           ))}
-          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
-            <input value={question} onChange={(e) => setQuestion(e.target.value)} disabled={busy || out}
-              placeholder={out ? "The day is over." : "Ask your own question…"}
-              className="w-full rounded-lg border border-[#b89a6a] bg-[#fffaf0] px-3 py-2 text-[14px] text-[#2a1d14] placeholder:text-[#9a8466] focus:border-[#7a5230] focus:outline-none" />
-            <button className="wood" disabled={busy || out || !question.trim()}>Ask</button>
-          </form>
-          <div className="flex items-center gap-2">
-            {statements.length > 0 && (
-              <button className="text-[13px] font-semibold text-[#7a5230] underline decoration-dotted" onClick={() => setPicking(!picking)}>
-                Show them evidence{cites.length ? ` (${cites.length})` : ""}
-              </button>
-            )}
-            <span className="ml-auto text-[12px] text-[#6b5040]">30 min per question</span>
-            <button className="wood" onClick={onLeave}>Leave</button>
-          </div>
-          {picking && (
-            <div className="max-h-40 space-y-1 overflow-auto rounded-md border border-[#c9ae7c] bg-[#fffaf0] p-2 text-[12px]">
-              {statements.map((s) => (
-                <label key={s.statement_id} className="flex gap-2">
-                  <input type="checkbox" checked={cites.includes(s.statement_id)}
-                    onChange={(e) => setCites((c) => (e.target.checked ? [...c, s.statement_id] : c.filter((x) => x !== s.statement_id)))} />
-                  <span><b>{s.name}:</b> {s.dialogue.slice(0, 110)}</span>
-                </label>
-              ))}
-            </div>
+          {!choices.length && !busy && <p className="text-[13px] italic text-[#6b5040]">You've asked {name.split(" ")[0]} everything on your list.</p>}
+          {own ? (
+            <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
+              <input autoFocus value={question} onChange={(e) => setQuestion(e.target.value)} disabled={busy || out}
+                placeholder={out ? "The day is over." : "Type your question…"}
+                className="w-full rounded-lg border border-[#b89a6a] bg-[#fffaf0] px-3 py-2 text-[14px] text-[#2a1d14] placeholder:text-[#9a8466] focus:border-[#7a5230] focus:outline-none" />
+              <button className="wood" disabled={busy || out || !question.trim()}>Ask</button>
+            </form>
+          ) : (
+            <button className="self-start text-[13px] font-semibold text-[#7a5230] underline decoration-dotted" disabled={out} onClick={() => setOwn(true)}>
+              Ask something else…
+            </button>
           )}
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] text-[#6b5040]">{out ? "No questions left today." : `Each question takes 30 minutes · ${questionsLeft} left`}</span>
+            <button className="wood ml-auto" onClick={onLeave}>Leave</button>
+          </div>
         </div>
       </div>
     </motion.div>

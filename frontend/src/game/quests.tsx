@@ -32,53 +32,97 @@ export function milestonesFor(a: Answer, ctx: { hub?: string; followed: boolean 
   return ids;
 }
 
-export function objective(answers: Answer[], unlocked: Set<string>, hub: string | undefined, names: Record<string, string>,
-  pendingSource: { id: string; name: string } | null): Objective {
+export type Step = Objective & { id: string; done: boolean; optional?: boolean; accuse?: boolean };
+
+/** The case as a short checklist, worked out from what the villagers have told you. The first open
+ *  step that isn't optional is the one to do now; its targets get the gold "!" on the map. */
+export function caseSteps(answers: Answer[], unlocked: Set<string>, hub: string | undefined, names: Record<string, string>,
+  pendingSource: { id: string; name: string } | null): Step[] {
   const asked = new Set(answers.map((a) => a.villager));
   const first = (id: string) => (names[id] ?? id).replace(/^(Father|Lady|Dr\.|Constable) /, "").split(" ")[0];
-  const sightingHeard = answers.some((a) => a.claims.some((c) => c.reported_as === "heard" && /lantern/.test(c.about ?? "")));
-  if (!answers.length && hub) {
-    return { step: 1, title: `Talk to ${names[hub]}`, detail: "PageRank over who-knows-whom says she hears everything. Start at the Tavern.", targets: [hub] };
-  }
-  if (pendingSource) {
-    return { step: 2, title: `Ask ${pendingSource.name} where they heard it`, detail: "Every hop of a rumor can change it. Follow it back.", targets: [pendingSource.id] };
-  }
-  if (sightingHeard && !unlocked.has("source") && hub) {
-    return { step: 2, title: "Trace the sighting near the Mill", detail: `${first(hub)} heard about a figure with a lantern. Ask her: “Who told you?”`, targets: [hub] };
-  }
-  if (!unlocked.has("lie")) {
-    const who = ["aldric", "elena", "jonas"].filter((v) => !asked.has(v));
-    return { step: 3, title: "Check the alibis", detail: "Ask Father Aldric when Elena left the Chapel, and ask Elena and Jonas where they were from 21:00 to 22:00.", targets: who.length ? who : ["aldric"] };
-  }
-  if (!unlocked.has("motive") || !unlocked.has("means")) {
-    return { step: 4, title: "Motive and means", detail: "Who owed Silas money? Who was at the Smithy, where the hammer went missing? Children notice things.", targets: ["tilly"] };
-  }
-  if (!unlocked.has("secret") && answers.some((a) => a.villager === "jonas")) {
-    return { step: 5, title: "Where was Jonas really?", detail: "Ask Lady Wren. Show her what Bess saw: Jonas leaving the Tavern toward the Manor.", targets: ["wren"] };
-  }
-  return { step: 6, title: "Make your accusation", detail: "Check the notebook's suspects, then name the killer with your evidence.", targets: [] };
+  const gossip = hub ? first(hub) : "the barkeep";
+  const alibis = ["elena", "jonas", "aldric"].filter((v) => !asked.has(v));
+  const steps: Step[] = [
+    { id: "gossip", step: 1, title: "Hear the gossip", done: !!hub && asked.has(hub), targets: hub ? [hub] : [],
+      detail: `${gossip} at the Tavern hears everything. Ask what people are saying about last night.` },
+    { id: "source", step: 2, title: "Find who really saw it", done: unlocked.has("source"),
+      targets: pendingSource ? [pendingSource.id] : hub ? [hub] : [],
+      detail: pendingSource
+        ? `${pendingSource.name} passed the story on. Go and ask where they heard it.`
+        : `Someone was seen near the Mill with a lantern. Stories change as they pass along, so ask ${gossip} “Who told you?” and follow it to whoever saw it.` },
+    { id: "alibis", step: 3, title: "Check the alibis", done: unlocked.has("lie"), targets: alibis.length ? alibis : ["aldric"],
+      detail: "Ask Elena and Jonas where they were between 21:00 and 22:00, and ask Father Aldric when Elena left the Chapel. Look for a story that doesn't match." },
+    { id: "motive", step: 4, title: "Motive and means", done: unlocked.has("motive") && unlocked.has("means"), targets: ["tilly"],
+      detail: "Who owed Silas money? Who was at the Smithy, where the hammer went missing? Little Tilly notices things." },
+    { id: "jonas", step: 5, title: "Where was Jonas?", done: unlocked.has("secret"), optional: true, targets: ["wren"],
+      detail: "Jonas was seen leaving the Tavern toward the Manor. Lady Wren may know why." },
+    { id: "accuse", step: 6, title: "Name the killer", done: unlocked.has("closed"), accuse: true, targets: [],
+      detail: "When you're ready, accuse. Your notebook's evidence goes with you." },
+  ];
+  return steps;
 }
 
-export function QuestTracker({ obj, count }: { obj: Objective; count: number }) {
-  const [open, setOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 1100);
+/** The step to do now. */
+export function currentStep(steps: Step[]): Step {
+  return steps.find((s) => !s.done && !s.optional) ?? steps[steps.length - 1];
+}
+
+/** Kept for callers that want one line: the current step. */
+export function objective(answers: Answer[], unlocked: Set<string>, hub: string | undefined, names: Record<string, string>,
+  pendingSource: { id: string; name: string } | null): Objective {
+  return currentStep(caseSteps(answers, unlocked, hub, names, pendingSource));
+}
+
+export function CaseFile({ steps, names, onGo, onAccuse }: {
+  steps: Step[];
+  names: Record<string, string>;
+  onGo: (villager: string) => void;
+  onAccuse: () => void;
+}) {
+  const [open, setOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 900);
+  const now = currentStep(steps);
+  const required = steps.filter((s) => !s.optional);
+  const done = required.filter((s) => s.done).length;
+  const first = (id: string) => (names[id] ?? id).replace(/^(Father|Lady|Dr\.|Constable) /, "").split(" ")[0];
   return (
-    <motion.div layout className="pointer-events-auto w-[min(300px,calc(100vw-24px))] rounded-xl border border-[#7a5230]/60 bg-[#1c1714]/80 p-3 text-[#efe6d4] shadow-xl backdrop-blur">
+    <motion.div layout className="pointer-events-auto w-[min(310px,calc(100vw-24px))] rounded-xl border border-[#7a5230]/60 bg-[#1c1714]/85 p-3 text-[#efe6d4] shadow-xl backdrop-blur">
       <button className="flex w-full items-center gap-2 text-left" onClick={() => setOpen(!open)}>
-        <span className="text-lg">🧭</span>
-        <span className="font-display text-[15px] text-[#ffd27a]">{obj.title}</span>
+        <span className="font-display text-[16px] text-[#ffd27a]">Case file</span>
+        <span className="text-[12px] text-[#cbb89a]">{done} of {required.length}</span>
         <span className="ml-auto text-[11px] text-[#cbb89a]">{open ? "▾" : "▸"}</span>
       </button>
+      {!open && <div className="mt-1 text-[13px] text-[#f8eed6]">Next: {now.title}</div>}
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <p className="mt-1 text-[12.5px] leading-snug text-[#e8dcc0]">{obj.detail}</p>
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#cbb89a]">
-              {Object.values(MILESTONES).map((m, i) => (
-                <span key={m.id} title={m.title} className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${i < count ? "bg-[#e8a33d]" : "bg-[#3a332c]"}`} />
-              ))}
-              <span className="ml-1">{count}/{Object.keys(MILESTONES).length}</span>
-            </div>
-          </motion.div>
+          <motion.ol initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+            className="mt-2 space-y-1.5 overflow-hidden">
+            {steps.map((s) => {
+              const isNow = s.id === now.id;
+              return (
+                <li key={s.id} className={`rounded-lg px-2 py-1.5 ${isNow ? "bg-[#e8a33d]/15 ring-1 ring-[#e8a33d]/60" : ""}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                      s.done ? "bg-[#7fae5a] text-[#1c1714]" : isNow ? "bg-[#e8a33d] text-[#1c1714]" : "bg-[#3a332c] text-[#cbb89a]"}`}>
+                      {s.done ? "✓" : s.optional ? "?" : s.step}
+                    </span>
+                    <span className={`text-[13.5px] ${s.done ? "text-[#9a8f80] line-through" : isNow ? "font-semibold text-[#f8eed6]" : "text-[#cbb89a]"}`}>
+                      {s.title}{s.optional && !s.done ? " (optional)" : ""}
+                    </span>
+                  </div>
+                  {(isNow || (s.optional && !s.done && now.step > 3)) && (
+                    <div className="ml-7 mt-1">
+                      <p className="text-[12.5px] leading-snug text-[#e8dcc0]">{s.detail}</p>
+                      {s.accuse ? (
+                        <button className="wood mt-1.5 text-[13px]" onClick={onAccuse}>⚖ Accuse now</button>
+                      ) : s.targets[0] && (
+                        <button className="wood mt-1.5 text-[13px]" onClick={() => onGo(s.targets[0])}>Go to {first(s.targets[0])} →</button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </motion.ol>
         )}
       </AnimatePresence>
     </motion.div>

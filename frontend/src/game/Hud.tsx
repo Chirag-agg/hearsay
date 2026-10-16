@@ -97,16 +97,30 @@ export function ActionBar({ onNotebook, onInspector, onMinds, onLens, onAccuse, 
   lens: boolean;
   inspectorBusy: boolean;
 }) {
+  // Playing needs two buttons: your notes and the accusation. The rest shows how the game works inside.
+  const [more, setMore] = useState(false);
+  const pick = (fn: () => void) => () => { setMore(false); fn(); };
   return (
-    <div className="pointer-events-auto flex flex-wrap justify-end gap-2">
-      <button className="wood" onClick={onNotebook} title="Your case notes: evidence, suspects, rumor traces">📜 Notebook</button>
-      <button className="wood" onClick={onInspector} disabled={inspectorBusy} title="Hand the case to the detective agent (MCP)">
-        🕵 {inspectorBusy ? "Inspector at work…" : "Send for the Inspector"}
-      </button>
-      <button className={`wood ${minds ? "wood-on" : ""}`} onClick={onMinds} title="See every villager's memory graph">👁 Mind's eye</button>
-      <button className={`wood ${lens ? "wood-on" : ""}`} onClick={onLens} title="Every FalkorDB query, live">⌗ Graph lens</button>
+    <div className="pointer-events-auto relative flex flex-wrap justify-end gap-2">
+      <button className="wood" onClick={onNotebook} title="Your case notes: evidence, suspects, rumor traces (N)">📜 Notebook</button>
       <button className="wood" onClick={onAccuse} title="Name the killer">⚖ Accuse</button>
+      <button className={`wood ${more || minds || lens || inspectorBusy ? "wood-on" : ""}`} onClick={() => setMore(!more)} title="How the game works inside">⋯</button>
       <button className="wood" onClick={onSound} title="Sound on or off (M)">{muted ? "🔇" : "🔊"}</button>
+      {more && (
+        <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-xl border border-[#5a3a22] bg-[#1c1714]/95 p-2 text-[#efe6d4] shadow-2xl backdrop-blur">
+          <div className="px-2 pb-1 pt-0.5 text-[11px] uppercase tracking-[0.2em] text-[#cbb89a]">Behind the scenes</div>
+          {[
+            { label: inspectorBusy ? "🕵 Inspector at work…" : "🕵 Send for the Inspector", hint: "An AI detective solves the case for you", on: onInspector, active: inspectorBusy },
+            { label: "👁 Mind's eye", hint: "Read every villager's memory", on: onMinds, active: minds },
+            { label: "⌗ Graph lens", hint: "Every database query, live", on: onLens, active: lens },
+          ].map((o) => (
+            <button key={o.label} onClick={pick(o.on)} className={`block w-full rounded-lg px-2 py-1.5 text-left hover:bg-white/10 ${o.active ? "bg-white/10" : ""}`}>
+              <div className="text-[14px]">{o.label}</div>
+              <div className="text-[11.5px] text-[#cbb89a]">{o.hint}</div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

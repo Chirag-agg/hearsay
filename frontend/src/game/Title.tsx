@@ -50,23 +50,52 @@ const LETTER = [
   "— Constable Hale",
 ];
 
+const HOW = [
+  { icon: "◯", title: "Talk to people", text: "Click anyone standing on a gold ring. Each question takes half an hour of your day." },
+  { icon: "🗣", title: "Ask “Who told you?”", text: "Gossip changes as it's passed along. Follow a story back to the person who actually saw it." },
+  { icon: "✗", title: "Catch a lie", text: "When two stories can't both be true, someone is hiding something." },
+  { icon: "⚖", title: "Accuse", text: "Name the killer and why. The case file on the left always shows your next step." },
+];
+
+export function HowToPlay({ onDone }: { onDone: () => void }) {
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="parchment w-full max-w-lg p-6">
+        <div className="mb-3 font-display text-3xl">How to play</div>
+        <ol className="space-y-3">
+          {HOW.map((h, i) => (
+            <motion.li key={h.title} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.12 }}
+              className="flex gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7a5230] text-lg text-[#f8eed6]">{h.icon}</span>
+              <span>
+                <b className="font-display text-[18px]">{h.title}</b>
+                <span className="block text-[14px] leading-snug text-[#4a3020]">{h.text}</span>
+              </span>
+            </motion.li>
+          ))}
+        </ol>
+        <div className="mt-5 flex justify-end">
+          <button className="wood px-6 text-lg" onClick={onDone}>Got it</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export function Briefing({ onStart }: { onStart: () => void }) {
-  const [shown, setShown] = useState(1);
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <motion.div initial={{ rotate: -2, y: 30, opacity: 0 }} animate={{ rotate: -1, y: 0, opacity: 1 }}
-        className="parchment w-full max-w-xl p-7">
+        className="parchment max-h-full w-full max-w-xl overflow-auto p-7">
         <div className="mb-3 flex items-center justify-between text-[12px] uppercase tracking-[0.25em] text-[#6b5040]">
           <span>Hollowmere constabulary</span><span>Morning, 08:00</span>
         </div>
-        {LETTER.slice(0, shown).map((p, i) => (
-          <motion.p key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
+        {LETTER.map((p, i) => (
+          <motion.p key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.3 + i * 0.35 }}
             className={`mb-3 font-display text-[19px] leading-relaxed ${i === LETTER.length - 1 ? "text-right italic" : ""}`}>{p}</motion.p>
         ))}
         <div className="mt-4 flex justify-end">
-          {shown < LETTER.length
-            ? <button className="wood" onClick={() => setShown(shown + 1)}>Read on</button>
-            : <button className="wood px-6 text-lg" onClick={onStart}>Take the case</button>}
+          <button className="wood px-6 text-lg" onClick={onStart}>Take the case</button>
         </div>
       </motion.div>
     </div>
