@@ -59,6 +59,7 @@ ROADS = [("square", "tavern"), ("square", "smithy"), ("square", "herbalist"), ("
 SQUARE = (600, 392, 150, 60)  # the village square: an ellipse of dirt
 RIVER = [(1310, 230), (1262, 330), (1250, 440), (1222, 560), (1150, 650), (1080, 700), (1030, 750)]
 RIVER_HALF = 42
+CELL = 16  # the walking grid, in map pixels
 MILL_FRAMES = 12  # Casper Nilsson's windmill: 12 frames of 224 x 320
 WHEAT = (40, 590, 200, 700)
 GARDEN = (40, 420, 118, 505)
@@ -385,7 +386,7 @@ def main() -> None:
     # The square: a well, and lamps.
     put(tile(well, 0, 0, 2, 2), sx - 32, sy - 52, block=8)
     lamp = objects.crop((224, 64, 256, 160))
-    lamps = [(sx - 175, sy - 40), (sx + 168, sy - 40), (1050, 610), (DOORS["chapel"][0] - 80, DOORS["chapel"][1] + 22)]
+    lamps = [(sx - 175, sy - 40), (sx + 168, sy - 40), (1050, 610)]
     for x, y in lamps:
         put(lamp, x - 16, y - 92, block=4)
     # Signs by the doors: the inn, the smith's sword, the herbalist's bottle.
@@ -429,6 +430,41 @@ def main() -> None:
         canvas.alpha_composite(img, (x, y)) if x >= 0 and y >= 0 else paste_clipped(canvas, img, x, y)
     canvas = canvas.crop((0, 0, MW, MH))
 
+    # Where passers-by may go, on a 16px grid: "walk" is road clear of every building, tree, prop and the
+    # windmill; "clear" is any ground clear of them and of the river (for grazing animals).
+    solid = Image.new("L", (MW, MH), 0)
+    sd = ImageDraw.Draw(solid)
+    for base, img, (x, y) in things:
+        box = img.getbbox()
+        if box:
+            if img.size[1] >= 120 or img.size[0] >= 60:  # buildings, trees, the well: nobody walks over them
+                sd.rectangle((x + box[0] - 2, y + box[1] - 2, x + box[2] + 2, y + box[3] + 2), fill=255)
+            else:  # lamps, signs, barrels, graves, plants: only where they stand
+                sd.rectangle((x + box[0] - 1, min(base, y + box[3]) - 10, x + box[2] + 1, y + box[3] + 1), fill=255)
+    for place, (dx, dy) in DOORS.items():  # a way in at every door
+        if place in buildings:
+            sd.rectangle((dx - 14, dy - 6, dx + 14, dy + 56), fill=0)
+    # The windmill is drawn above passers-by, so only its tower's base blocks the way.
+    mill_base = (mill_x + 60, mill_y + 190, mill_x + fw - 40, mill_y + fh - 24)
+    sd.rectangle(mill_base, fill=255)
+    # The ground along the front of every building (and the mill) is open, so each doorway joins the roads.
+    fronts = [(x - dx_, x - dx_ + img.size[0], y) for name, (img, (dx_, dy_)) in buildings.items() for x, y in [DOORS[name]]]
+    fronts.append((mill_base[0], mill_base[2], DOORS["mill"][1]))
+    walk, clear = [], []
+    for gy in range(MH // CELL):
+        wrow, crow = [], []
+        for gx in range(MW // CELL):
+            x0, y0 = gx * CELL, gy * CELL
+            free = not solid.crop((x0, y0, x0 + CELL, y0 + CELL)).getbbox()
+            cx, cy = x0 + CELL / 2, y0 + CELL / 2
+            at_door = any(x0_ - 24 <= cx <= x1_ + 24 and dy - 6 <= cy <= dy + 56 for x0_, x1_, dy in fronts)
+            tx, ty = int(cx // T), int(cy // T)  # dirt is drawn on every tile with a road corner
+            dirt = any(road_v[ty + j][tx + i] for i in (0, 1) for j in (0, 1)) if ty < TH else False
+            wrow.append("1" if free and (dirt or at_door) else "0")
+            crow.append("1" if free and not in_water(cx, cy) and line_dist((cx, cy), RIVER) > RIVER_HALF + 8 else "0")
+        walk.append("".join(wrow))
+        clear.append("".join(crow))
+
     OUT.mkdir(parents=True, exist_ok=True)
     canvas.convert("RGB").save(OUT / "village.png", optimize=True)
     windmill.save(OUT / "windmill.png", optimize=True)
@@ -446,6 +482,7 @@ def main() -> None:
         "chimneys": [w(p) for p in chimneys],
         "pasture": [*w(PASTURE[:2]).values(), *w(PASTURE[2:]).values()],
         "yard": [*w(YARD[:2]).values(), *w(YARD[2:]).values()],
+        "grid": {"cell": CELL * U, "walk": walk, "clear": clear},
     }
     META.write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     (OUT / "CREDITS.md").write_text(CREDITS, encoding="utf-8")

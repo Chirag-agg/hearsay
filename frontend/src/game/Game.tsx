@@ -405,7 +405,7 @@ export default function Game() {
           )}
           {!talkingTo && !minds && (
             <div className="absolute bottom-3 right-3 hidden rounded-lg bg-[#1c1714]/70 px-3 py-1.5 text-[11px] text-[#cbb89a] backdrop-blur md:block">
-              Drag or arrows to look around · wheel, pinch or <b>+</b>/<b>−</b> to zoom · <b>N</b> notebook · <b>M</b> sound
+              <span className="text-[#ffd27a]">◯</span> gold ring: someone you can question · drag or arrows to look around · wheel, pinch or <b>+</b>/<b>−</b> to zoom · <b>N</b> notebook
             </div>
           )}
           {minds && (

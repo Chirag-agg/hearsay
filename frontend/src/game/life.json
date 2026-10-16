@@ -1,9 +1,4 @@
 {
-  "horse": {
-    "frame": 128,
-    "frames": 4,
-    "feet": 128
-  },
   "cow": {
     "frame": 128,
     "frames": 4,
@@ -19,10 +14,10 @@
     "frames": 4,
     "feet": 28
   },
-  "cart": {
-    "frame": 64,
-    "frames": 1,
-    "feet": 58
+  "horsecart": {
+    "frame": 256,
+    "frames": 4,
+    "feet": 160
   },
   "boat": {
     "width": 123,

@@ -104,6 +104,44 @@ def cart_frames() -> Image.Image:
     return out
 
 
+def centroid_x(img: Image.Image) -> int:
+    """The mean x of a frame's opaque pixels: its visual centre, which a tail or a shadow can't skew."""
+    a = img.getchannel("A").load()
+    xs = [x for y in range(img.size[1]) for x in range(img.size[0]) if a[x, y] > 128]
+    return round(sum(xs) / len(xs)) if xs else img.size[0] // 2
+
+
+def horse_and_cart(horse: Image.Image, cart: Image.Image) -> tuple[Image.Image, tuple[int, int]]:
+    """The horse with the cart hitched behind it, one 256px frame per walk frame (columns) and direction (rows:
+    up, left, down, right). Returns the sheet and the anchor (the horse's hooves) within a frame."""
+    F, AX, AY = 256, 128, 160
+    out = Image.new("RGBA", (F * 4, F * 4), (0, 0, 0, 0))
+    for row in range(4):  # up, left, down, right
+        side = cart.crop((row * 64, 0, row * 64 + 64, 64))
+        for col in range(4):
+            h = horse.crop((col * 128, row * 128, col * 128 + 128, row * 128 + 128))
+            box = horse.crop((0, row * 128, 128, row * 128 + 128)).getbbox()  # frame 0, so the cart doesn't jitter
+            hx = AX - centroid_x(horse.crop((0, row * 128, 128, row * 128 + 128)))  # where the horse frame goes
+            hy = AY - box[3]
+            frame = Image.new("RGBA", (F, F), (0, 0, 0, 0))
+            if row == 3:    # right: the cart trails to the left, its shafts under the horse
+                cx, cy = hx + box[0] + 8 - 49, AY - 58
+            elif row == 1:  # left: mirrored
+                cx, cy = hx + box[2] - 8 - 15, AY - 58
+            elif row == 2:  # down: the cart is behind (above) the horse
+                cx, cy = AX - 32, hy + box[1] + 30 - 58
+            else:           # up: the cart is in front of the horse's hind legs
+                cx, cy = AX - 32, AY - 30
+            if row == 0:
+                frame.alpha_composite(h, (hx, hy))
+                frame.alpha_composite(side, (cx, cy))
+            else:
+                frame.alpha_composite(side, (cx, cy))
+                frame.alpha_composite(h, (hx, hy))
+            out.alpha_composite(frame, (col * F, row * F))
+    return out, (AX, AY)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("kit", type=Path)
@@ -115,8 +153,6 @@ def main() -> None:
     meta = {}
 
     horse = load("horse-brown_0.png").crop((0, 4 * 128, 512, 8 * 128))  # rows 4-7: the walk cycle
-    horse.save(OUT / "horse.png", optimize=True)
-    meta["horse"] = {"frame": 128, "frames": 4, "feet": feet(horse, 128, 2)}
     for animal in ("cow", "sheep"):
         sheet = stack(load(f"{animal}_walk.png"), load(f"{animal}_eat.png"))
         sheet.save(OUT / f"{animal}.png", optimize=True)
@@ -126,8 +162,9 @@ def main() -> None:
     meta["chicken"] = {"frame": 32, "frames": 4, "feet": feet(chicken, 32, 2)}
 
     cart = cart_frames()
-    cart.save(OUT / "cart.png", optimize=True)
-    meta["cart"] = {"frame": 64, "frames": 1, "feet": 58}
+    hitched, (_, ay) = horse_and_cart(horse, cart)
+    hitched.save(OUT / "horsecart.png", optimize=True)
+    meta["horsecart"] = {"frame": 256, "frames": 4, "feet": ay}
 
     farming = Image.open(args.kit / "LPC/img/tilesets/LPC/Final Attributions/Individual Assets/Daniel Eddeland (Daneeklu)/farming_fishing.png").convert("RGBA")
     boat = farming.crop((224, 448, 352, 512))
@@ -144,8 +181,8 @@ CREDITS = """# Village life credits
 
 Built by `scripts/build_life.py`. The hay cart is drawn by the script.
 
-- `horse.png`: "[LPC] Horses" by bluecarrot16, CC-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0.
-  https://opengameart.org/content/lpc-horses (the walk cycle of horse-brown).
+- `horsecart.png`: "[LPC] Horses" by bluecarrot16, CC-BY 3.0 / CC-BY-SA 3.0 / GPL 3.0 / GPL 2.0 / OGA-BY 3.0.
+  https://opengameart.org/content/lpc-horses (the walk cycle of horse-brown), hitched to the script's hay cart.
 - `cow.png`, `sheep.png`, `chicken.png`: "LPC style farm animals" by Daniel Eddeland (daneeklu), commissioned by
   tebruno99; CC-BY 3.0 / GPL 2.0. https://opengameart.org/content/lpc-style-farm-animals
 - `boat.png`: the rowboat from "LPC Farming tilesets, magic animations and UI elements" by Daniel Eddeland,

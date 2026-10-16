@@ -64,7 +64,8 @@ const ROADS: [string, string, number][] = [
 
 const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
 
-function Windmill() {
+/** Drawn above passers-by (by Scene): anyone walking behind the mill passes under its sails. */
+export function Windmill() {
   const m = VILLAGE.windmill;
   const [frame, setFrame] = useState(0);
   useEffect(() => {
@@ -97,7 +98,6 @@ export const World = memo(function World({ sky }: { sky: Sky }) {
   return (
     <g>
       <image href={asset("tiles/village.png")} width={W} height={H} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} />
-      <Windmill />
       {/* cloud shadows drifting over the village */}
       {!night && [0, 1, 2].map((k) => (
         <ellipse key={k} className="cloud-shadow" style={{ animationDelay: `${k * -50}s` }} cx="0" cy={180 + k * 280} rx="220" ry="70" fill="#14240f" opacity="0.1" />

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sound } from "./audio";
 import Life from "./life";
 import { Sprite, type Dir, type Mood } from "./characters";
-import { H, Lighting, PLACES, W, World, type Sky } from "./world";
+import { H, Lighting, PLACES, W, Windmill, World, type Sky } from "./world";
 
 export type Point = { x: number; y: number };
 export type Bubble = { id: string; from: Point; to: Point; delay: number };
@@ -299,6 +299,7 @@ export default function Scene({
       onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
       <World sky={sky} />
       {life && <Life night={sky.night} />}
+      <Windmill />
       <Ambient night={sky.night} />
       {extras}
 
@@ -309,7 +310,9 @@ export default function Scene({
           onClick={() => interactive && !suppressClick.current && onVillager?.(v.id)}
           onMouseEnter={() => setHover(v.id)}
           onMouseLeave={() => setHover(null)}>
-          {(hover === v.id && interactive) && <ellipse cx="0" cy="0" rx="18" ry="6" fill="#fff" opacity="0.35" />}
+          {/* A gold ring marks the people in the case; passers-by have none. */}
+          <ellipse cx="0" cy="1" rx="15" ry="5" fill={hover === v.id && interactive ? "#fff3c4" : "none"} fillOpacity="0.45"
+            stroke="#ffd27a" strokeWidth="1.6" strokeOpacity={v.dim ? 0.35 : 0.85} />
           {v.id === hub && (
             <g>
               <ellipse cx="0" cy="0" rx="22" ry="7" fill="#ffd27a" opacity="0.35" className="pulse" />

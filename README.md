@@ -65,7 +65,7 @@ If something else already uses port 6379 (an error like `unknown command 'GRAPH.
 
 ## Playing
 
-Click a villager and your detective walks over; the camera closes in and they answer in their own voice. Everything they say becomes an evidence card. On hearsay, ask **“Who told you?”** and go and question the source: that's how you walk a rumor back to whoever actually saw it. The compass in the corner suggests the next lead, and a gold **!** marks who to see.
+Click a villager (the people in the case stand on a gold ring; muted passers-by, carts and animals are just village life) and your detective walks over; the camera closes in and they answer in their own voice. Everything they say becomes an evidence card. On hearsay, ask **“Who told you?”** and go and question the source: that's how you walk a rumor back to whoever actually saw it. The compass in the corner suggests the next lead, and a gold **!** marks who to see.
 
 | Control | Does |
 | --- | --- |

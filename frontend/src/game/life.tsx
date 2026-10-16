@@ -18,33 +18,98 @@ const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const dirOf = (dx: number, dy: number): Dir => (Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
 
-/** The road between two places, the same curve build_village.py draws (always computed in its drawn direction). */
-function road(a: string, b: string): P[] {
-  const drawn = VILLAGE.roads.some(([x, y]) => x === a && y === b);
-  const [s, t] = drawn ? [a, b] : [b, a];
-  // The square's well stands where the roads meet: passers-by stop just south of it.
-  const end = (id: string) => (id === "square" ? { x: PLACES[id].x + 6, y: PLACES[id].y + 52 } : PLACES[id]);
-  const p = end(s);
-  const q = end(t);
-  const off = 12.5;
-  const c = { x: (p.x + q.x) / 2 + (q.y - p.y) * 0.12, y: (p.y + q.y) / 2 - (q.x - p.x) * 0.06 + off };
-  const pts: P[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const u = i / 24;
-    pts.push({
-      x: (1 - u) ** 2 * p.x + 2 * (1 - u) * u * c.x + u * u * q.x,
-      y: (1 - u) ** 2 * (p.y + off) + 2 * (1 - u) * u * c.y + u * u * (q.y + off),
-    });
+// The map's walking grid (from build_village.py): "walk" is road clear of buildings, trees, props and the
+// windmill's tower; "clear" is any open ground. Nobody here walks through anything.
+const GRID = VILLAGE.grid;
+const CELL = GRID.cell;
+const ROWS = GRID.walk.length;
+const COLS = GRID.walk[0].length;
+const open = (grid: string[], gx: number, gy: number) => gx >= 0 && gy >= 0 && gx < COLS && gy < ROWS && grid[gy][gx] === "1";
+const cellAt = (p: P) => ({ gx: Math.floor(p.x / CELL), gy: Math.floor(p.y / CELL) });
+const middle = (gx: number, gy: number): P => ({ x: (gx + 0.5) * CELL, y: (gy + 0.5) * CELL });
+
+/** The open cell nearest a point. */
+function nearest(grid: string[], p: P) {
+  const { gx, gy } = cellAt(p);
+  let best: { gx: number; gy: number } | null = null;
+  let bd = Infinity;
+  for (let r = 0; r < 14 && !best; r++) {
+    for (let y = gy - r; y <= gy + r; y++) {
+      for (let x = gx - r; x <= gx + r; x++) {
+        if (!open(grid, x, y)) continue;
+        const m = middle(x, y);
+        const d = Math.hypot(m.x - p.x, m.y - p.y);
+        if (d < bd) { bd = d; best = { gx: x, gy: y }; }
+      }
+    }
   }
-  return drawn ? pts : pts.reverse();
+  return best ?? { gx, gy };
 }
+
+/** True if a straight line between two points crosses only open cells. */
+function clearLine(grid: string[], a: P, b: P) {
+  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (CELL / 3));
+  for (let i = 0; i <= n; i++) {
+    const { gx, gy } = cellAt({ x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n });
+    if (!open(grid, gx, gy)) return false;
+  }
+  return true;
+}
+
+/** A* over the grid (no corner cutting), then pulled straight wherever the way is clear. */
+function findPath(grid: string[], from: P, to: P): P[] {
+  const s = nearest(grid, from);
+  const t = nearest(grid, to);
+  const key = (x: number, y: number) => y * COLS + x;
+  const g = new Map<number, number>([[key(s.gx, s.gy), 0]]);
+  const prev = new Map<number, number>();
+  const openSet: [number, number, number][] = [[0, s.gx, s.gy]]; // f, x, y
+  const h = (x: number, y: number) => Math.hypot(x - t.gx, y - t.gy);
+  const done = new Set<number>();
+  while (openSet.length) {
+    let bi = 0;
+    for (let i = 1; i < openSet.length; i++) if (openSet[i][0] < openSet[bi][0]) bi = i;
+    const [, x, y] = openSet.splice(bi, 1)[0];
+    const k = key(x, y);
+    if (done.has(k)) continue;
+    done.add(k);
+    if (x === t.gx && y === t.gy) break;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!open(grid, nx, ny) || (dx && dy && (!open(grid, x + dx, y) || !open(grid, x, y + dy)))) continue;
+      const nk = key(nx, ny);
+      const ng = (g.get(k) ?? 0) + Math.hypot(dx, dy);
+      if (ng < (g.get(nk) ?? Infinity)) {
+        g.set(nk, ng);
+        prev.set(nk, k);
+        openSet.push([ng + h(nx, ny), nx, ny]);
+      }
+    }
+  }
+  const cells: P[] = [];
+  for (let k: number | undefined = key(t.gx, t.gy); k !== undefined; k = prev.get(k)) cells.unshift(middle(k % COLS, Math.floor(k / COLS)));
+  if (cells.length < 2) return [middle(s.gx, s.gy), middle(t.gx, t.gy)];
+  const out = [cells[0]];
+  let i = 0;
+  while (i < cells.length - 1) {
+    let j = cells.length - 1;
+    while (j > i + 1 && !clearLine(grid, cells[i], cells[j])) j--;
+    out.push(cells[j]);
+    i = j;
+  }
+  return out;
+}
+
+// Where passers-by stop: in front of each door, and just south of the square's well.
+const spot = (id: string): P => (id === "square" ? { x: PLACES[id].x + 6, y: PLACES[id].y + 56 } : { x: PLACES[id].x, y: PLACES[id].y + 16 });
 
 type Stop = { at: number; place: string };
 function route(places: string[]): { path: P[]; stops: Stop[] } {
   const path: P[] = [];
   const stops: Stop[] = [{ at: 0, place: places[0] }];
   for (let i = 0; i + 1 < places.length; i++) {
-    const seg = road(places[i], places[i + 1]);
+    const seg = findPath(GRID.walk, spot(places[i]), spot(places[i + 1]));
     path.push(...(i === 0 ? seg : seg.slice(1)));
     stops.push({ at: path.length - 1, place: places[i + 1] });
   }
@@ -140,6 +205,18 @@ const INDOORS = new Set(["tavern", "smithy", "manor", "herbalist", "chapel", "mi
 
 type Grazer = { kind: "cow" | "sheep" | "chicken"; pos: P; to: P; eat: number; clock: number; dir: Dir; box: number[]; speed: number };
 
+/** Somewhere open in a box, reachable from `from` in a straight line (or `from` itself if nowhere is). */
+function pasture(box: number[], from?: P): P {
+  for (let i = 0; i < 24; i++) {
+    const { gx, gy } = cellAt({ x: rand(box[0], box[2]), y: rand(box[1], box[3]) });
+    const p = middle(gx, gy);
+    if (open(GRID.clear, gx, gy) && (!from || clearLine(GRID.clear, from, p))) return p;
+  }
+  if (from) return from;
+  const c = nearest(GRID.clear, { x: (box[0] + box[2]) / 2, y: (box[1] + box[3]) / 2 });
+  return middle(c.gx, c.gy);
+}
+
 export default function Life({ night = false }: { night?: boolean }) {
   const refs = useRef<Record<string, SVGElement | null>>({});
   const set = (key: string) => (el: SVGElement | null) => { refs.current[key] = el; };
@@ -151,7 +228,7 @@ export default function Life({ night = false }: { night?: boolean }) {
     const out: Grazer[] = [];
     const add = (kind: Grazer["kind"], box: number[], n: number, speed: number) => {
       for (let i = 0; i < n; i++) {
-        const pos = { x: rand(box[0], box[2]), y: rand(box[1], box[3]) };
+        const pos = pasture(box);
         out.push({ kind, pos, to: { ...pos }, eat: rand(0, 4), clock: rand(0, 3), dir: "down", box, speed });
       }
     };
@@ -200,16 +277,8 @@ export default function Life({ night = false }: { night?: boolean }) {
       });
 
       cart.step(dt, () => rand(4, 8));
-      const d = cart.dir;
-      const back = { right: { x: -74, y: -2 }, left: { x: 74, y: -2 }, down: { x: 0, y: -46 }, up: { x: 0, y: 44 } }[d];
-      place("horse", cart.pos);
-      frame("horses", 128, cart.walking ? Math.floor(cart.clock * 6.6) % 4 : 0, ROW[d]);
-      for (const slot of ["cartBack", "cartFront"]) {
-        const shown = (slot === "cartFront") === (d === "up");
-        r[slot]?.setAttribute("display", shown ? "inline" : "none");
-        place(slot, { x: cart.pos.x + back.x, y: cart.pos.y + back.y });
-        frame(`${slot}s`, 64, ROW[d], 0);
-      }
+      place("cart", cart.pos);
+      frame("carts", 256, cart.walking ? Math.floor(cart.clock * 6.6) % 4 : 0, ROW[cart.dir]);
 
       grazers.forEach((g, k) => {
         g.clock += dt;
@@ -224,7 +293,7 @@ export default function Life({ night = false }: { night?: boolean }) {
           const n = Math.floor(g.clock * 5);
           frame(`g${k}s`, size, g.kind === "chicken" ? n % 4 : n < 2 ? n : 2 + (n % 2), 4 + ROW[g.dir]);
           if (g.eat <= 0) {
-            g.to = { x: rand(g.box[0], g.box[2]), y: rand(g.box[1], g.box[3]) };
+            g.to = pasture(g.box, g.pos);
             g.clock = 0;
           }
         } else if (dist < 1) {
@@ -285,12 +354,17 @@ export default function Life({ night = false }: { night?: boolean }) {
         const m = LIFE[g.kind];
         return <Frame key={k} href={`life/${g.kind}.png`} frame={m.frame} feet={m.feet} cols={4} rows={8} gRef={set(`g${k}`)} sRef={set(`g${k}s`)} />;
       })}
-      <Frame href="life/cart.png" frame={64} feet={LIFE.cart.feet} cols={4} rows={1} gRef={set("cartBack")} sRef={set("cartBacks")} />
-      <Frame href="life/horse.png" frame={128} feet={LIFE.horse.feet - 8} cols={4} rows={4} gRef={set("horse")} sRef={set("horses")} />
-      <Frame href="life/cart.png" frame={64} feet={LIFE.cart.feet} cols={4} rows={1} gRef={set("cartFront")} sRef={set("cartFronts")} />
+      <Frame href="life/horsecart.png" frame={256} feet={LIFE.horsecart.feet} cols={4} rows={4} gRef={set("cart")} sRef={set("carts")} />
+      {/* Passers-by are drawn muted and a little smaller, so the people in the case stand out. */}
+      <defs>
+        <filter id="passerby" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="saturate" values="0.3" />
+          <feComponentTransfer><feFuncR type="linear" slope="0.92" /><feFuncG type="linear" slope="0.92" /><feFuncB type="linear" slope="0.95" /></feComponentTransfer>
+        </filter>
+      </defs>
       {travellers.map((tr, k) => (
-        <g key={tr.who}>
-          <Frame href={`sprites/${tr.who}.png`} frame={64} feet={62} cols={9} rows={4} shadow={10} gRef={set(`t${k}`)} sRef={set(`t${k}s`)} />
+        <g key={tr.who} filter="url(#passerby)" opacity="0.88">
+          <Frame href={`sprites/${tr.who}.png`} frame={64} feet={62} cols={9} rows={4} scale={0.9} shadow={8} gRef={set(`t${k}`)} sRef={set(`t${k}s`)} />
         </g>
       ))}
       {!night && [0, 1, 2].map((k) => (
