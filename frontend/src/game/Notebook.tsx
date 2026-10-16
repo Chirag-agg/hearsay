@@ -284,7 +284,7 @@ function PeopleWeb({ board, names }: { board: Board | null; names: Record<string
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="min-w-0 flex-1 rounded-sm bg-[#fbf3df]/95 p-2 shadow-xl">
-        <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full">
+        <svg viewBox={`0 0 ${W} ${H}`} className="mx-auto block h-auto max-h-[62vh] w-full">
           <defs>
             <marker id="told-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0 0 L10 5 L0 10 Z" fill="#2d5f78" />
