@@ -80,6 +80,31 @@ If something else already uses port 6379 (an error like `unknown command 'GRAPH.
 
 **LLM (optional):** any OpenAI-compatible API (`LLM_PROVIDER=groq` or `openai`, `LLM_MODEL`, `LLM_API_KEY`). The LLM only words answers and picks the detective's tools. With `REPLAY=1`, or no LLM configured, villagers answer in template sentences and the detective follows a scripted plan, so every run is identical.
 
+## Deploy on Vercel
+
+The repository deploys to Vercel as one project with two [services](https://vercel.com/docs/services) (see `vercel.json`):
+the Vite frontend at `/` and the FastAPI backend at `/api` on the same domain. The browser calls the backend
+directly, so neither service needs a binding.
+
+1. Create a FalkorDB Cloud instance (Vercel can't run FalkorDB itself) and seed its template graphs once from your machine:
+   `FALKORDB_HOST=... FALKORDB_PORT=... FALKORDB_USERNAME=... FALKORDB_PASSWORD=... python scripts/seed.py` (about 45 s).
+   The backend also seeds them on first use if they are missing.
+2. In Vercel, import the repository, keep the root directory `./`, and choose **Import multi-service project**.
+3. Add the environment variables (Production and Preview):
+
+   | Variable | Value |
+   | --- | --- |
+   | `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_USERNAME`, `FALKORDB_PASSWORD` | your FalkorDB Cloud connection |
+   | `REPLAY` | `1` for template answers with no LLM, or leave unset to use the LLM below |
+   | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY` | optional: villagers' voices and the detective's tool picking (Groq by default) |
+   | `MAX_GAMES` | optional: games kept at once (default 5, sized for the 100 MB Cloud tier) |
+
+4. Deploy. The frontend is built with `VITE_API_URL=/api` (from `frontend/.env.production`), and the backend accepts
+   every route both at `/` and under `/api`.
+
+On serverless, live events (gossip bubbles, the inspector's steps as they happen) are kept per instance, so a poll that
+lands on another instance can miss one; every answer still carries its own events and results.
+
 ## Playing
 
 The **case file** on the left is your guide: five plain steps (hear the gossip, find who really saw it, check the alibis, motive and means, name the killer), each with a **Go** button that walks you to the right person. A gold **!** marks them on the map.

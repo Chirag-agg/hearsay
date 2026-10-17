@@ -46,6 +46,10 @@ def delete_game(g: str) -> None:
 
 
 def create_game() -> dict:
+    from app import seed
+
+    if not seed.templates_ready():  # a serverless deploy may never have run the startup seed
+        seed.seed(verbose=False)
     with _create_lock:
         live = list_games()
         evicted = []

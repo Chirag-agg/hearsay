@@ -22,6 +22,23 @@ from app.case import verdict
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s")
 
+class StripPrefix:
+    """Serve every route under an optional prefix too. On Vercel the frontend and the API share one
+    domain and the API is reached at /api/..., with the original path passed through; locally and in
+    Docker the API is at the root."""
+
+    def __init__(self, app, prefix: str = "/api"):
+        self.app = app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "")
+        if scope["type"] in ("http", "websocket") and (path == self.prefix or path.startswith(self.prefix + "/")):
+            rest = path[len(self.prefix):] or "/"
+            scope = {**scope, "path": rest, "raw_path": rest.encode()}
+        await self.app(scope, receive, send)
+
+
 app = FastAPI(title="HEARSAY")
 app.add_middleware(
     CORSMiddleware,
@@ -29,6 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(StripPrefix, prefix=os.getenv("API_PREFIX", "/api"))
 
 
 @app.on_event("startup")
