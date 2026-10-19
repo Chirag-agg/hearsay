@@ -13,9 +13,11 @@ import asyncio
 import logging
 import os
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
 
 from app import db, events, games, play
 from app.case import verdict
@@ -47,6 +49,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(StripPrefix, prefix=os.getenv("API_PREFIX", "/api"))
+
+
+@app.exception_handler(RedisConnectionError)
+@app.exception_handler(RedisTimeoutError)
+async def falkordb_unreachable(request: Request, exc: Exception) -> JSONResponse:
+    """A wrong FALKORDB_HOST/PORT or a paused Cloud instance: say so instead of a bare 500."""
+    host, port = db.endpoint()
+    logging.getLogger("hearsay").error("FalkorDB unreachable at %s:%s: %s", host, port, exc)
+    return JSONResponse(status_code=503, content={
+        "detail": f"can't reach FalkorDB at {host}:{port} (check FALKORDB_HOST and FALKORDB_PORT)"})
 
 
 @app.on_event("startup")

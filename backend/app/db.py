@@ -30,11 +30,22 @@ VILLAGERS = ["elena", "jonas", "wren", "bess", "pip", "aldric", "tilly", "hale",
 VICTIM = "silas"
 
 
+def endpoint() -> tuple[str, int]:
+    """FALKORDB_HOST and FALKORDB_PORT. FalkorDB Cloud shows the address as host:port, and that is
+    often pasted whole into FALKORDB_HOST: a port there wins over FALKORDB_PORT."""
+    host = os.getenv("FALKORDB_HOST", "localhost").strip()
+    port = os.getenv("FALKORDB_PORT", "6379").strip()
+    if host.count(":") == 1:
+        host, port = host.split(":")
+    return host, int(port)
+
+
 def connect() -> FalkorDB:
     """A new client. Most code should use `client()`, which shares one connection pool."""
+    host, port = endpoint()
     return FalkorDB(
-        host=os.getenv("FALKORDB_HOST", "localhost"),
-        port=int(os.getenv("FALKORDB_PORT", "6379")),
+        host=host,
+        port=port,
         username=os.getenv("FALKORDB_USERNAME") or None,  # FalkorDB Cloud needs one; local Docker doesn't
         password=os.getenv("FALKORDB_PASSWORD") or None,
     )
